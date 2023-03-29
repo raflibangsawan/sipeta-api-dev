@@ -54,39 +54,47 @@ where python3 # for Windows
 2. Clone this repository in your local computer
 
 3. Install pre-commit
-```
+```sh
 pre-commit install
 ```
 
-4. Create a virtual environment using `venv` for example
+4. Create a virtual environment using `venv`, for example
 ```sh
 python3 -m venv venv
 source venv/bin/activate # your virtual env is active now
 ```
 
 5. Install the needed requirements to your virtual environment
-```
-pip3 install -r requirements.txt
+```sh
+pip3 install -r requirements/local.txt
 ```
 
-6. Make sure you have these environment variables already set to your local PostgreSQL settings
+6. Create a file named `.env` and copy the content from `.env.template`
+```sh
+cat .env.template > .env
 ```
-DB_NAME
-DB_USER
-DB_PASSWORD
-DB_HOST
-DB_PORT
-```
-7. Start a postgresql server locally according to how you set above variables (username, password, etc.)
 
-8. Run the database migrations
+7. Open the `.env` file and edit these values
+```
+DJANGO_SECRET_KEY # can be generated from https://djecrety.ir
+DATABASE_NAME
+DATABASE_URL
+```
+
+8. Start a postgresql server locally according to how you set above variables (username, password, etc.)
+
+9. Run the database migrations
 ```sh
 python3 manage.py makemigrations
 python3 manage.py migrate
 ```
 
+10. Create cache table
+```sh
+python3 manage.py createcachetable
+```
 
-9. Run the application (Done!)
+11. Run the application (Done!)
 ```sh
 python3 manage.py runserver
 ```
