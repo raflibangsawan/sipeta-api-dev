@@ -22,6 +22,7 @@ class UserAdmin(auth_admin.UserAdmin):
                     "email",
                     "kode_identitas",
                     "role_pengguna",
+                    "is_dosen_ta",
                     "is_dosen_eksternal",
                 )
             },
