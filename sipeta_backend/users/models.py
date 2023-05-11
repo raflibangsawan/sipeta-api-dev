@@ -21,4 +21,5 @@ class User(AbstractUser):
 
     kode_identitas = CharField(_("Kode Identitas"), blank=True, max_length=255)
     role_pengguna = CharField(_("Role Pengguna"), blank=True, max_length=255)
+    is_dosen_ta = BooleanField(_("Dosen TA"), blank=False, default=False)
     is_dosen_eksternal = BooleanField(_("Dosen Eksternal"), blank=False, default=False)
