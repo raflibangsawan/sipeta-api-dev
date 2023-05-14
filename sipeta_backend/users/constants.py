@@ -1,6 +1,7 @@
 # USERS ROLES
 ROLE_MAHASISWA = "mahasiswa"
 ROLE_DOSEN = "dosen"
+ROLE_STAFF_SEKRE = "staff sekre"
 ROLE_ADMIN = "admin"
 
 # LDAP URLS
