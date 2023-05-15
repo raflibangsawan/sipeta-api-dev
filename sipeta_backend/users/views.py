@@ -1,5 +1,6 @@
 import requests
 from django.contrib.auth import authenticate, get_user_model
+from django.db.models import Q
 from rest_framework import permissions
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
@@ -19,7 +20,8 @@ from sipeta_backend.users.constants import (
     ROLE_MAHASISWA,
     ROLE_STAFF_SEKRE,
 )
-from sipeta_backend.users.serializers import UserSigninSerializer
+from sipeta_backend.users.permissions import IsNotEksternal
+from sipeta_backend.users.serializers import UserSerializer, UserSigninSerializer
 
 User = get_user_model()
 
@@ -170,6 +172,34 @@ class LogoutView(APIView):
         return Response(
             {"msg": "Logout berhasil: Token terhapus dari sistem"}, status=HTTP_200_OK
         )
+
+
+class AbstractUserView(APIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = (
+        permissions.IsAuthenticated,
+        IsNotEksternal,
+    )
+
+    def get(self, request):
+        src = request.GET.get("src", "")
+        if not src.isdigit():
+            src = ".*" + src.replace(" ", ".*") + ".*"
+        else:
+            src = "^" + src
+        queryset = self.queryset
+        queryset = queryset.filter(Q(kode_identitas__iregex=src) | Q(name__iregex=src))
+        serializer = UserSerializer(queryset, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+
+class MahasiswaView(AbstractUserView):
+    queryset = User.objects.filter(role_pengguna=ROLE_MAHASISWA)
+
+
+class DosenView(AbstractUserView):
+    queryset = User.objects.filter(role_pengguna=ROLE_DOSEN)
 
 
 def map_user_role_to_integer(user_role, is_dosen_ta):

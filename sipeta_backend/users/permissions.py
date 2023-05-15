@@ -8,6 +8,11 @@ from sipeta_backend.users.constants import (
 )
 
 
+class IsNotEksternal(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return bool((request.user) and (not request.user.is_dosen_eksternal))
+
+
 class IsMahasiswa(permissions.BasePermission):
     def has_permission(self, request, view):
         return bool((request.user) and (request.user.role_pengguna == ROLE_MAHASISWA))
