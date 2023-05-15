@@ -15,10 +15,8 @@ from sipeta_backend.users.authentication import expires_in, token_expire_handler
 from sipeta_backend.users.constants import (
     DOSEN_FASILKOM_URL,
     LDAP_FASILKOM_URL,
-    ROLE_ADMIN,
     ROLE_DOSEN,
     ROLE_MAHASISWA,
-    ROLE_STAFF_SEKRE,
 )
 from sipeta_backend.users.permissions import IsNotEksternal
 from sipeta_backend.users.serializers import UserSerializer, UserSigninSerializer
@@ -69,9 +67,7 @@ class LoginView(APIView):
                 {
                     "id": user.id_user,
                     "name": user.name,
-                    "role_pengguna": map_user_role_to_integer(
-                        user.role_pengguna, user.is_dosen_ta
-                    ),
+                    "role_pengguna": user.role_as_integer,
                     "expires_in": expires_in(token),
                     "token": token.key,
                 },
@@ -154,9 +150,7 @@ class LoginView(APIView):
             {
                 "id": id,
                 "name": user.name,
-                "role_pengguna": map_user_role_to_integer(
-                    user.role_pengguna, user.is_dosen_ta
-                ),
+                "role_pengguna": user.role_as_integer,
                 "expires_in": expires_in(token),
                 "token": token.key,
             },
@@ -200,18 +194,3 @@ class MahasiswaView(AbstractUserView):
 
 class DosenView(AbstractUserView):
     queryset = User.objects.filter(role_pengguna=ROLE_DOSEN)
-
-
-def map_user_role_to_integer(user_role, is_dosen_ta):
-    if user_role == ROLE_MAHASISWA:
-        return "4564"
-    elif user_role == ROLE_DOSEN:
-        if is_dosen_ta:
-            return "8714"
-        return "8465"
-    elif user_role == ROLE_STAFF_SEKRE:
-        return "9344"
-    elif user_role == ROLE_ADMIN:
-        return "9812"
-    else:
-        return "0000"

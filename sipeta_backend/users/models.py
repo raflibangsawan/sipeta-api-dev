@@ -4,6 +4,13 @@ from django.contrib.auth.models import AbstractUser
 from django.db.models import BooleanField, CharField, UUIDField
 from django.utils.translation import gettext_lazy as _
 
+from sipeta_backend.users.constants import (
+    ROLE_ADMIN,
+    ROLE_DOSEN,
+    ROLE_MAHASISWA,
+    ROLE_STAFF_SEKRE,
+)
+
 
 class User(AbstractUser):
     """
@@ -23,3 +30,18 @@ class User(AbstractUser):
     role_pengguna = CharField(_("Role Pengguna"), blank=True, max_length=255)
     is_dosen_ta = BooleanField(_("Dosen TA"), blank=False, default=False)
     is_dosen_eksternal = BooleanField(_("Dosen Eksternal"), blank=False, default=False)
+
+    @property
+    def role_as_integer(self):
+        if self.role_pengguna == ROLE_MAHASISWA:
+            return "4564"
+        elif self.role_pengguna == ROLE_DOSEN:
+            if self.is_dosen_ta:
+                return "8714"
+            return "8465"
+        elif self.role_pengguna == ROLE_STAFF_SEKRE:
+            return "9344"
+        elif self.role_pengguna == ROLE_ADMIN:
+            return "9812"
+        else:
+            return "0000"

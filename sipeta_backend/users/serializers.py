@@ -10,6 +10,8 @@ class UserSigninSerializer(serializers.Serializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    role_pengguna = serializers.CharField(source="role_as_integer")
+
     class Meta:
         model = User
-        fields = ["kode_identitas", "name", "role_pengguna"]
+        fields = ["id_user", "kode_identitas", "name", "role_pengguna"]
