@@ -4,6 +4,7 @@ from sipeta_backend.proposal.models import Proposal
 
 
 class ProposalSerializer(serializers.ModelSerializer):
+    semester = serializers.StringRelatedField()
     berkas_proposal = serializers.SerializerMethodField()
     mahasiswas = serializers.SerializerMethodField()
     dosen_pembimbings = serializers.SerializerMethodField()
@@ -12,6 +13,7 @@ class ProposalSerializer(serializers.ModelSerializer):
         model = Proposal
         fields = [
             "id_proposal",
+            "semester",
             "title",
             "sumber_ide",
             "berkas_proposal",
