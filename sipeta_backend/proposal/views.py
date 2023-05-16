@@ -31,6 +31,20 @@ class ProposalView(APIView):
         proposals = Proposal.objects.filter(
             Q(semester=active_semester) | Q(status=PROPOSAL_STATUS_DITERIMA)
         )
+
+        # proposal list search bar
+        src = request.GET.get("src", "")
+        if not src.isdigit():
+            src = ".*" + src.replace(" ", ".*") + ".*"
+        else:
+            src = "^" + src
+        proposals = proposals.filter(
+            Q(title__iregex=src)
+            | Q(mahasiswas__name__iregex=src)
+            | Q(dosen_pembimbings__name__iregex=src)
+            | Q(mahasiswas__kode_identitas__iregex=src)
+            | Q(dosen_pembimbings__kode_identitas__iregex=src)
+        )
         serializer = ProposalSerializer(proposals, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
