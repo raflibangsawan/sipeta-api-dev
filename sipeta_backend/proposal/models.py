@@ -71,7 +71,7 @@ class Proposal(models.Model):
     created_on = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["-semester", "-created_on"]
+        ordering = ["semester", "-created_on"]
 
     def __str__(self) -> str:
         return f"{self.title}"
