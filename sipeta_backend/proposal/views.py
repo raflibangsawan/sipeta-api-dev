@@ -14,6 +14,7 @@ from sipeta_backend.proposal.permissions import (
 from sipeta_backend.proposal.serializers import ProposalSerializer
 from sipeta_backend.semester.models import Semester
 from sipeta_backend.users.permissions import IsNotEksternal
+from sipeta_backend.utils.pagination import Pagination
 
 
 class ProposalView(APIView):
@@ -32,19 +33,28 @@ class ProposalView(APIView):
             Q(semester=active_semester) | Q(status=PROPOSAL_STATUS_DITERIMA)
         )
 
-        # proposal list search bar
-        src = request.GET.get("src", "")
-        if not src.isdigit():
-            src = ".*" + src.replace(" ", ".*") + ".*"
-        else:
-            src = "^" + src
-        proposals = proposals.filter(
-            Q(title__iregex=src)
-            | Q(mahasiswas__name__iregex=src)
-            | Q(dosen_pembimbings__name__iregex=src)
-            | Q(mahasiswas__kode_identitas__iregex=src)
-            | Q(dosen_pembimbings__kode_identitas__iregex=src)
+        # proposal list search feature
+        src = request.GET.get("src", None)
+        if src:
+            if not src.isdigit():
+                src = ".*" + src.replace(" ", ".*") + ".*"
+            else:
+                src = "^" + src
+            proposals = proposals.filter(
+                Q(title__iregex=src)
+                | Q(mahasiswas__name__iregex=src)
+                | Q(dosen_pembimbings__name__iregex=src)
+                | Q(mahasiswas__kode_identitas__iregex=src)
+                | Q(dosen_pembimbings__kode_identitas__iregex=src)
+            ).distinct()
+
+        # proposal list pagination feature
+        paginator = Pagination(
+            proposals, request.GET.get("page"), request.GET.get("per_page")
         )
+        proposals, paginator = paginator.get_content()
+        print(proposals)
+
         serializer = ProposalSerializer(proposals, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
