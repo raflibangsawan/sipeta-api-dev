@@ -31,6 +31,9 @@ class User(AbstractUser):
     is_dosen_ta = BooleanField(_("Dosen TA"), blank=False, default=False)
     is_dosen_eksternal = BooleanField(_("Dosen Eksternal"), blank=False, default=False)
 
+    def __str__(self) -> str:
+        return self.name
+
     @property
     def role_as_integer(self):
         if self.role_pengguna == ROLE_MAHASISWA:

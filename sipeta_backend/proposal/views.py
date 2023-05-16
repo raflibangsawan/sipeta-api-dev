@@ -5,15 +5,18 @@ from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_RE
 from rest_framework.views import APIView
 
 from sipeta_backend.proposal.constants import PROPOSAL_STATUS_DITERIMA
-from sipeta_backend.proposal.forms import ProposalCreationForm
+from sipeta_backend.proposal.forms import ProposalCommentForm, ProposalCreationForm
 from sipeta_backend.proposal.models import AdministrasiProposal, Proposal
 from sipeta_backend.proposal.permissions import (
     IsMahasiswaCreateProposal,
     IsProposalUsers,
 )
-from sipeta_backend.proposal.serializers import ProposalSerializer
+from sipeta_backend.proposal.serializers import (
+    InteraksiProposalSerializer,
+    ProposalSerializer,
+)
 from sipeta_backend.semester.models import Semester
-from sipeta_backend.users.permissions import IsDosenTa, IsNotEksternal
+from sipeta_backend.users.permissions import IsDosenTa, IsMethodReadOnly, IsNotEksternal
 from sipeta_backend.utils.pagination import Pagination
 
 
@@ -58,7 +61,6 @@ class ProposalView(APIView):
             proposals, request.GET.get("page"), request.GET.get("per_page")
         )
         proposals, paginator = paginator.get_content()
-        print(proposals)
 
         serializer = ProposalSerializer(proposals, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
@@ -83,6 +85,9 @@ class ProposalDetailView(APIView):
     permission_classes = (
         permissions.IsAuthenticated,
         IsProposalUsers | IsNotEksternal,
+        IsProposalUsers
+        | IsDosenTa
+        | IsMethodReadOnly,  # method post only for dosen ta or proposal users
     )
 
     @property
@@ -94,3 +99,11 @@ class ProposalDetailView(APIView):
     def get(self, request, *args, **kwargs):
         serializer = ProposalSerializer(self.proposal)
         return Response(serializer.data, status=HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+        form = ProposalCommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(proposal=self.proposal, user=request.user)
+            serializer = InteraksiProposalSerializer(comment)
+            return Response(serializer.data, status=HTTP_201_CREATED)
+        return Response(form.errors, status=HTTP_400_BAD_REQUEST)

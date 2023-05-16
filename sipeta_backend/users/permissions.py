@@ -76,3 +76,8 @@ class IsAdmin(permissions.BasePermission):
             and (request.user.is_superuser)
             and (request.user.role_pengguna == ROLE_ADMIN)
         )
+
+
+class IsMethodReadOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.method in permissions.SAFE_METHODS)

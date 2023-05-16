@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from sipeta_backend.proposal.models import Proposal
+from sipeta_backend.proposal.models import InteraksiProposal, Proposal
+from sipeta_backend.users.serializers import UserSerializer
 
 
 class ProposalSerializer(serializers.ModelSerializer):
@@ -8,6 +9,7 @@ class ProposalSerializer(serializers.ModelSerializer):
     berkas_proposal = serializers.SerializerMethodField()
     mahasiswas = serializers.SerializerMethodField()
     dosen_pembimbings = serializers.SerializerMethodField()
+    interaksi_proposals = serializers.SerializerMethodField()
 
     class Meta:
         model = Proposal
@@ -22,27 +24,32 @@ class ProposalSerializer(serializers.ModelSerializer):
             "created_on",
             "mahasiswas",
             "dosen_pembimbings",
+            "interaksi_proposals",
         ]
 
     def get_berkas_proposal(self, obj):
         return obj.berkas_proposal.url
 
     def get_mahasiswas(self, obj):
-        return [
-            {
-                "id": mahasiswa.id_user,
-                "kode_identitas": mahasiswa.kode_identitas,
-                "name": mahasiswa.name,
-            }
-            for mahasiswa in obj.mahasiswas.all()
-        ]
+        return UserSerializer(obj.mahasiswas.all(), many=True).data
 
     def get_dosen_pembimbings(self, obj):
-        return [
-            {
-                "id": dosen_pembimbing.id_user,
-                "kode_identitas": dosen_pembimbing.kode_identitas,
-                "name": dosen_pembimbing.name,
-            }
-            for dosen_pembimbing in obj.dosen_pembimbings.all()
+        return UserSerializer(obj.dosen_pembimbings.all(), many=True).data
+
+    def get_interaksi_proposals(self, obj):
+        return InteraksiProposalSerializer(
+            obj.interaksi_proposals.all(), many=True
+        ).data
+
+
+class InteraksiProposalSerializer(serializers.ModelSerializer):
+    created_by = serializers.StringRelatedField()
+
+    class Meta:
+        model = InteraksiProposal
+        fields = [
+            "tipe",
+            "content",
+            "created_by",
+            "created_on",
         ]

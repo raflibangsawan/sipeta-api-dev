@@ -3,8 +3,11 @@ import json
 from django import forms
 from django.contrib.auth import get_user_model
 
-from sipeta_backend.proposal.constants import PROPOSAL_STATUS_PENDING
-from sipeta_backend.proposal.models import Proposal
+from sipeta_backend.proposal.constants import (
+    INTERAKSI_PROPOSAL_TIPE_KOMENTAR,
+    PROPOSAL_STATUS_PENDING,
+)
+from sipeta_backend.proposal.models import InteraksiProposal, Proposal
 from sipeta_backend.semester.models import Semester
 
 User = get_user_model()
@@ -64,3 +67,18 @@ class ProposalCreationForm(forms.ModelForm):
         cleaned_data["dosen_pembimbings"] = dosen_pembimbings
 
         return cleaned_data
+
+
+class ProposalCommentForm(forms.ModelForm):
+    class Meta:
+        model = InteraksiProposal
+        fields = ["content"]
+
+    def save(self, commit=True, *args, **kwargs):
+        interaksi_proposal = super().save(commit=False)
+        interaksi_proposal.tipe = INTERAKSI_PROPOSAL_TIPE_KOMENTAR
+        interaksi_proposal.created_by = kwargs.get("user")
+        interaksi_proposal.proposal = kwargs.get("proposal")
+        if commit:
+            interaksi_proposal.save()
+        return interaksi_proposal

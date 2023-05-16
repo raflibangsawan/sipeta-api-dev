@@ -6,6 +6,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from sipeta_backend.proposal.constants import (
+    INTERAKSI_PROPOSAL_TIPE_CHOICES,
     PROPOSAL_STATUS_CHOICES,
     PROPOSAL_STATUS_PENDING,
     PROPOSAL_SUMBER_IDE_CHOICES,
@@ -77,6 +78,10 @@ class Proposal(models.Model):
     def __str__(self) -> str:
         return f"{self.title}"
 
+    @property
+    def interaksi_proposals(self):
+        return InteraksiProposal.objects.filter(proposal=self)
+
 
 class AdministrasiProposal(models.Model):
     status_pengajuan_proposal = models.BooleanField(
@@ -95,3 +100,19 @@ class AdministrasiProposal(models.Model):
             administrasi_proposal = AdministrasiProposal.objects.first()
         administrasi_proposal.status_pengajuan_proposal = to_bool(status)
         administrasi_proposal.save()
+
+
+class InteraksiProposal(models.Model):
+    proposal = models.ForeignKey(Proposal, blank=False, on_delete=models.CASCADE)
+    tipe = models.CharField(
+        max_length=3, blank=False, choices=INTERAKSI_PROPOSAL_TIPE_CHOICES
+    )
+    content = models.TextField(blank=False)
+
+    created_by = models.ForeignKey(
+        User, null=False, on_delete=models.CASCADE, related_name="+"
+    )
+    created_on = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_on"]
