@@ -4,6 +4,10 @@ from django import forms
 from django.contrib.auth import get_user_model
 
 from sipeta_backend.proposal.constants import (
+    INTERAKSI_PROPOSAL_TIPE_CHANGE_DOSEN_PEMBIMBING,
+    INTERAKSI_PROPOSAL_TIPE_CHANGE_STATUS_PROPOSAL,
+    INTERAKSI_PROPOSAL_TIPE_EDIT_BERKAS_PROPOSAL,
+    INTERAKSI_PROPOSAL_TIPE_EDIT_JUDUL_PROPOSAL,
     INTERAKSI_PROPOSAL_TIPE_KOMENTAR,
     PROPOSAL_STATUS_PENDING,
 )
@@ -69,16 +73,52 @@ class ProposalCreationForm(forms.ModelForm):
         return cleaned_data
 
 
-class ProposalCommentForm(forms.ModelForm):
+class AbstractInteraksiProposalForm(forms.ModelForm):
+    tipe = None
+    template_content = ""
+
     class Meta:
         model = InteraksiProposal
         fields = ["content"]
 
     def save(self, commit=True, *args, **kwargs):
         interaksi_proposal = super().save(commit=False)
-        interaksi_proposal.tipe = INTERAKSI_PROPOSAL_TIPE_KOMENTAR
+        interaksi_proposal.tipe = self.tipe
         interaksi_proposal.created_by = kwargs.get("user")
         interaksi_proposal.proposal = kwargs.get("proposal")
+        if self.tipe == INTERAKSI_PROPOSAL_TIPE_EDIT_BERKAS_PROPOSAL:
+            interaksi_proposal.content = self.template_content.format(
+                interaksi_proposal.created_by
+            )
+        elif self.tipe != INTERAKSI_PROPOSAL_TIPE_KOMENTAR:
+            interaksi_proposal.content = self.template_content.format(
+                interaksi_proposal.created_by, interaksi_proposal.content
+            )
         if commit:
             interaksi_proposal.save()
         return interaksi_proposal
+
+
+class InteraksiProposalCommentForm(AbstractInteraksiProposalForm):
+    tipe = INTERAKSI_PROPOSAL_TIPE_KOMENTAR
+    template_content = "{}"
+
+
+class InteraksiProposalChangeStatusForm(AbstractInteraksiProposalForm):
+    tipe = INTERAKSI_PROPOSAL_TIPE_CHANGE_STATUS_PROPOSAL
+    template_content = "{} mengubah status proposal menjadi {}"
+
+
+class InteraksiProposalChangeDosenPembimbingForm(AbstractInteraksiProposalForm):
+    tipe = INTERAKSI_PROPOSAL_TIPE_CHANGE_DOSEN_PEMBIMBING
+    template_content = "{} mengubah dosen pembimbing menjadi {}"
+
+
+class InteraksiProposalEditJudulForm(AbstractInteraksiProposalForm):
+    tipe = INTERAKSI_PROPOSAL_TIPE_EDIT_JUDUL_PROPOSAL
+    template_content = "{} mengubah judul proposal menjadi {}"
+
+
+class InteraksiProposalEditBerkasProposalForm(AbstractInteraksiProposalForm):
+    tipe = INTERAKSI_PROPOSAL_TIPE_EDIT_BERKAS_PROPOSAL
+    template_content = "{} mengubah berkas proposal"
