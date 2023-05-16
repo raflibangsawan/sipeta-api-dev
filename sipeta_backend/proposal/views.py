@@ -6,14 +6,14 @@ from rest_framework.views import APIView
 
 from sipeta_backend.proposal.constants import PROPOSAL_STATUS_DITERIMA
 from sipeta_backend.proposal.forms import ProposalCreationForm
-from sipeta_backend.proposal.models import Proposal
+from sipeta_backend.proposal.models import AdministrasiProposal, Proposal
 from sipeta_backend.proposal.permissions import (
     IsMahasiswaCreateProposal,
     IsProposalUsers,
 )
 from sipeta_backend.proposal.serializers import ProposalSerializer
 from sipeta_backend.semester.models import Semester
-from sipeta_backend.users.permissions import IsNotEksternal
+from sipeta_backend.users.permissions import IsDosenTa, IsNotEksternal
 from sipeta_backend.utils.pagination import Pagination
 
 
@@ -21,6 +21,11 @@ class ProposalView(APIView):
     permission_classes = (permissions.IsAuthenticated, IsMahasiswaCreateProposal)
 
     def post(self, request):
+        if not AdministrasiProposal._get_status_pengajuan_proposal():
+            return Response(
+                {"msg": "Pengajuan proposal belum dibuka"}, status=HTTP_400_BAD_REQUEST
+            )
+
         form = ProposalCreationForm(request.POST, request.FILES)
         if form.is_valid():
             proposal = form.save(user=request.user)
@@ -57,6 +62,21 @@ class ProposalView(APIView):
 
         serializer = ProposalSerializer(proposals, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
+
+
+class ProposalChangeStatusPengajuanView(APIView):
+    permission_classes = (
+        permissions.IsAuthenticated,
+        IsDosenTa,
+    )
+
+    def post(self, request):
+        status = request.data.get("status")
+        AdministrasiProposal._set_status_pengajuan_proposal(status)
+
+        return Response(
+            {"msg": "Status pengajuan proposal berhasil diubah."}, status=HTTP_200_OK
+        )
 
 
 class ProposalDetailView(APIView):

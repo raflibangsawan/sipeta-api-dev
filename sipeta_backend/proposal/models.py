@@ -17,6 +17,7 @@ from sipeta_backend.proposal.validators import (
 )
 from sipeta_backend.semester.models import Semester
 from sipeta_backend.users.models import User
+from sipeta_backend.utils.string import to_bool
 
 
 def create_hash_filename(path, filename):
@@ -75,3 +76,22 @@ class Proposal(models.Model):
 
     def __str__(self) -> str:
         return f"{self.title}"
+
+
+class AdministrasiProposal(models.Model):
+    status_pengajuan_proposal = models.BooleanField(
+        blank=False, null=False, default=True
+    )
+
+    @staticmethod
+    def _get_status_pengajuan_proposal():
+        return AdministrasiProposal.objects.first().status_pengajuan_proposal
+
+    @staticmethod
+    def _set_status_pengajuan_proposal(status):
+        if AdministrasiProposal.objects.count() == 0:
+            administrasi_proposal = AdministrasiProposal.objects.create()
+        else:
+            administrasi_proposal = AdministrasiProposal.objects.first()
+        administrasi_proposal.status_pengajuan_proposal = to_bool(status)
+        administrasi_proposal.save()
