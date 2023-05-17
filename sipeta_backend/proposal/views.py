@@ -30,6 +30,10 @@ from sipeta_backend.proposal.serializers import (
     ProposalListSerializer,
     ProposalSerializer,
 )
+from sipeta_backend.proposal.validators import (
+    validate_dosen_pembimbings_count,
+    validate_dosen_pembimbings_unique,
+)
 from sipeta_backend.semester.models import Semester
 from sipeta_backend.users.permissions import (
     IsDosenFasilkom,
@@ -189,10 +193,26 @@ class ProposalChangeDosenPembimbingView(APIView):
             User.objects.get(id_user=id_dosen_pembimbing)
             for id_dosen_pembimbing in list_dosen_pembimbing
         ]
+
+        msgs, valid_all = [], True
+        msg, valid = validate_dosen_pembimbings_unique(dosen_pembimbings)
+        if not valid:
+            valid_all = False
+            msgs.append(msg)
+
+        msg, valid = validate_dosen_pembimbings_count(dosen_pembimbings)
+        if not valid:
+            valid_all = False
+            msgs.append(msg)
+
+        if not valid_all:
+            return Response({"msg": msgs}, status=HTTP_400_BAD_REQUEST)
+
         if set(dosen_pembimbings) == set(self.proposal.dosen_pembimbings.all()):
             return Response(
                 {"msg": "Dosen pembimbing tidak berubah."}, status=HTTP_400_BAD_REQUEST
             )
+
         self.proposal.dosen_pembimbings.set(dosen_pembimbings)
         self.proposal.save()
 

@@ -12,6 +12,12 @@ from sipeta_backend.proposal.constants import (
     PROPOSAL_STATUS_PENDING,
 )
 from sipeta_backend.proposal.models import InteraksiProposal, Proposal
+from sipeta_backend.proposal.validators import (
+    validate_dosen_pembimbings_count,
+    validate_dosen_pembimbings_unique,
+    validate_mahasiswas_count,
+    validate_mahasiswas_unique,
+)
 from sipeta_backend.semester.models import Semester
 
 User = get_user_model()
@@ -56,7 +62,6 @@ class ProposalCreationForm(forms.ModelForm):
                     f"Mahasiswa dengan id {id_mahasiswa} tidak ditemukan"
                 )
             mahasiswas.append(mahasiswa)
-        cleaned_data["mahasiswas"] = mahasiswas
 
         list_dosen_pembimbing = json.loads(cleaned_data.get("list_dosen_pembimbing"))
         dosen_pembimbings = []
@@ -68,6 +73,33 @@ class ProposalCreationForm(forms.ModelForm):
                     f"Dosen dengan id {id_dosen_pembimbing} tidak ditemukan"
                 )
             dosen_pembimbings.append(dosen_pembimbing)
+
+        messages, valid_all = [], True
+
+        message, valid = validate_mahasiswas_unique(mahasiswas)
+        if not valid:
+            valid_all = False
+            messages.append(message)
+
+        message, valid = validate_mahasiswas_count(mahasiswas)
+        if not valid:
+            valid_all = False
+            messages.append(message)
+
+        message, valid = validate_dosen_pembimbings_unique(dosen_pembimbings)
+        if not valid:
+            valid_all = False
+            messages.append(message)
+
+        message, valid = validate_dosen_pembimbings_count(dosen_pembimbings)
+        if not valid:
+            valid_all = False
+            messages.append(message)
+
+        if not valid_all:
+            raise forms.ValidationError(messages)
+
+        cleaned_data["mahasiswas"] = mahasiswas
         cleaned_data["dosen_pembimbings"] = dosen_pembimbings
 
         return cleaned_data
