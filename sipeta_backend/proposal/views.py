@@ -7,7 +7,10 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 from rest_framework.views import APIView
 
-from sipeta_backend.proposal.constants import PROPOSAL_STATUS_DISETUJUI
+from sipeta_backend.proposal.constants import (
+    PROPOSAL_STATUS_DIBATALKAN,
+    PROPOSAL_STATUS_DISETUJUI,
+)
 from sipeta_backend.proposal.forms import (
     InteraksiProposalChangeDosenPembimbingForm,
     InteraksiProposalChangeStatusForm,
@@ -274,3 +277,29 @@ class ProposalDosenInterestView(APIView):
         self.proposal.save()
 
         return Response({"msg": "Interest berhasil diubah."}, status=HTTP_200_OK)
+
+
+class ProposalCancelView(APIView):
+    permission_classes = (permissions.IsAuthenticated, IsProposalUsers, IsMahasiswa)
+
+    @property
+    def proposal(self):
+        if not hasattr(self, "_proposal"):
+            self._proposal = Proposal.objects.get(id_proposal=self.kwargs["id"])
+        return self._proposal
+
+    def patch(self, request, *args, **kwargs):
+        if self.proposal.status == PROPOSAL_STATUS_DIBATALKAN:
+            return Response(
+                {"msg": "Proposal sudah dibatalkan."}, status=HTTP_400_BAD_REQUEST
+            )
+
+        self.proposal.status = PROPOSAL_STATUS_DIBATALKAN
+        self.proposal.save()
+
+        interaction_form = InteraksiProposalChangeStatusForm(
+            data={"content": PROPOSAL_STATUS_DIBATALKAN}
+        )
+        interaction = interaction_form.save(proposal=self.proposal, user=request.user)
+        serializer = InteraksiProposalSerializer(interaction)
+        return Response(serializer.data, status=HTTP_200_OK)

@@ -1,6 +1,7 @@
 from django.urls import path
 
 from sipeta_backend.proposal.views import (
+    ProposalCancelView,
     ProposalChangeDosenPembimbingView,
     ProposalChangeStatusPengajuanView,
     ProposalChangeStatusView,
@@ -22,4 +23,5 @@ urlpatterns = [
     ),
     path("<uuid:id>/edit", view=ProposalEditView.as_view()),
     path("<uuid:id>/interest", view=ProposalDosenInterestView.as_view()),
+    path("<uuid:id>/cancel", view=ProposalCancelView.as_view()),
 ]
