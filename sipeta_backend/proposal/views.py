@@ -27,6 +27,7 @@ from sipeta_backend.proposal.permissions import (
 )
 from sipeta_backend.proposal.serializers import (
     InteraksiProposalSerializer,
+    ProposalListSerializer,
     ProposalSerializer,
 )
 from sipeta_backend.semester.models import Semester
@@ -85,8 +86,17 @@ class ProposalView(APIView):
         )
         proposals, paginator = paginator.get_content()
 
-        serializer = ProposalSerializer(proposals, many=True)
-        return Response(serializer.data, status=HTTP_200_OK)
+        serializer = ProposalListSerializer(proposals, many=True)
+        return Response(
+            {
+                "status_pengajuan_proposal": AdministrasiProposal._get_status_pengajuan_proposal(),
+                "page_ranges": paginator.paginator.get_elided_page_range(
+                    paginator.number, on_each_side=1, on_ends=1
+                ),
+                "proposals": serializer.data,
+            },
+            status=HTTP_200_OK,
+        )
 
 
 class ProposalChangeStatusPengajuanView(APIView):

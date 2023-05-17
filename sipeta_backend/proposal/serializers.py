@@ -4,6 +4,29 @@ from sipeta_backend.proposal.models import InteraksiProposal, Proposal
 from sipeta_backend.users.serializers import UserSerializer
 
 
+class ProposalListSerializer(serializers.ModelSerializer):
+    semester = serializers.StringRelatedField()
+    mahasiswas = serializers.SerializerMethodField()
+    dosen_pembimbings = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Proposal
+        fields = [
+            "id_proposal",
+            "semester",
+            "title",
+            "status",
+            "mahasiswas",
+            "dosen_pembimbings",
+        ]
+
+    def get_mahasiswas(self, obj):
+        return UserSerializer(obj.mahasiswas.all(), many=True).data
+
+    def get_dosen_pembimbings(self, obj):
+        return UserSerializer(obj.dosen_pembimbings.all(), many=True).data
+
+
 class ProposalSerializer(serializers.ModelSerializer):
     semester = serializers.StringRelatedField()
     berkas_proposal = serializers.SerializerMethodField()
