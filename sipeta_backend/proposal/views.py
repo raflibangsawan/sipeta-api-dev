@@ -12,7 +12,10 @@ from sipeta_backend.proposal.forms import (
     InteraksiProposalChangeDosenPembimbingForm,
     InteraksiProposalChangeStatusForm,
     InteraksiProposalCommentForm,
+    InteraksiProposalEditBerkasProposalForm,
+    InteraksiProposalEditJudulForm,
     ProposalCreationForm,
+    ProposalUpdateBerkasProposalForm,
 )
 from sipeta_backend.proposal.models import AdministrasiProposal, Proposal
 from sipeta_backend.proposal.permissions import (
@@ -24,7 +27,12 @@ from sipeta_backend.proposal.serializers import (
     ProposalSerializer,
 )
 from sipeta_backend.semester.models import Semester
-from sipeta_backend.users.permissions import IsDosenTa, IsMethodReadOnly, IsNotEksternal
+from sipeta_backend.users.permissions import (
+    IsDosenTa,
+    IsMahasiswa,
+    IsMethodReadOnly,
+    IsNotEksternal,
+)
 from sipeta_backend.utils.pagination import Pagination
 
 User = get_user_model()
@@ -179,3 +187,64 @@ class ProposalChangeDosenPembimbingView(APIView):
         interaction = interaction_form.save(proposal=self.proposal, user=request.user)
         serializer = InteraksiProposalSerializer(interaction)
         return Response(serializer.data, status=HTTP_200_OK)
+
+
+class ProposalEditView(APIView):
+    permission_classes = (
+        permissions.IsAuthenticated,
+        IsProposalUsers,
+        IsMahasiswa,
+    )
+
+    @property
+    def proposal(self):
+        if not hasattr(self, "_proposal"):
+            self._proposal = Proposal.objects.get(id_proposal=self.kwargs["id"])
+        return self._proposal
+
+    def __edit_title(
+        self,
+        request,
+    ):
+        title = request.POST.get("title")
+        if title == self.proposal.title or title is None:
+            return ({}, False)
+        self.proposal.title = title
+        self.proposal.save()
+
+        interaction_form = InteraksiProposalEditJudulForm(data={"content": title})
+        interaction = interaction_form.save(proposal=self.proposal, user=request.user)
+        serializer = InteraksiProposalSerializer(interaction)
+        return (serializer.data, True)
+
+    def __edit_berkas_proposal(self, request):
+        berkas_proposal = request.FILES.get("berkas_proposal")
+        if berkas_proposal is None:
+            return ({}, False)
+        form = ProposalUpdateBerkasProposalForm(
+            instance=self.proposal, files=request.FILES
+        )
+        if not form.is_valid():
+            return (form.errors, False)
+        form.save()
+
+        interaction_form = InteraksiProposalEditBerkasProposalForm(
+            data={"content": berkas_proposal.name}
+        )
+        interaction = interaction_form.save(proposal=self.proposal, user=request.user)
+        serializer = InteraksiProposalSerializer(interaction)
+        return (serializer.data, True)
+
+    def patch(self, request, *args, **kwargs):
+        data_title, status_title = self.__edit_title(request)
+        data_berkas, status_berkas = self.__edit_berkas_proposal(request)
+        if not status_title and not status_berkas:
+            return Response(
+                {"msg": "Data proposal tidak berubah."}, status=HTTP_400_BAD_REQUEST
+            )
+        data = []
+        if status_title:
+            data.append(data_title)
+        if status_berkas:
+            data.append(data_berkas)
+        return Response(data, status=HTTP_200_OK)

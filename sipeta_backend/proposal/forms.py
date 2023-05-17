@@ -73,6 +73,19 @@ class ProposalCreationForm(forms.ModelForm):
         return cleaned_data
 
 
+class ProposalUpdateBerkasProposalForm(forms.ModelForm):
+    class Meta:
+        model = Proposal
+        fields = ["berkas_proposal"]
+
+    def save(self, commit=True, *args, **kwargs):
+        proposal = super().save(commit=False)
+        proposal.nama_berkas_proposal = self.cleaned_data["berkas_proposal"].name
+        if commit:
+            proposal.save()
+        return proposal
+
+
 class AbstractInteraksiProposalForm(forms.ModelForm):
     tipe = None
     template_content = ""
