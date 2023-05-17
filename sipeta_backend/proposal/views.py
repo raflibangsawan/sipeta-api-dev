@@ -28,12 +28,14 @@ from sipeta_backend.proposal.serializers import (
 )
 from sipeta_backend.semester.models import Semester
 from sipeta_backend.users.permissions import (
+    IsDosenFasilkom,
     IsDosenTa,
     IsMahasiswa,
     IsMethodReadOnly,
     IsNotEksternal,
 )
 from sipeta_backend.utils.pagination import Pagination
+from sipeta_backend.utils.string import to_bool
 
 User = get_user_model()
 
@@ -248,3 +250,27 @@ class ProposalEditView(APIView):
         if status_berkas:
             data.append(data_berkas)
         return Response(data, status=HTTP_200_OK)
+
+
+class ProposalDosenInterestView(APIView):
+    permission_classes = (permissions.IsAuthenticated, IsDosenFasilkom)
+
+    @property
+    def proposal(self):
+        if not hasattr(self, "_proposal"):
+            self._proposal = Proposal.objects.get(id_proposal=self.kwargs["id"])
+        return self._proposal
+
+    def patch(self, request, *args, **kwargs):
+        interest = to_bool(request.POST.get("interest"))
+        if request.user in self.proposal.dosen_tertariks.all() == interest:
+            return Response(
+                {"msg": "Interest tidak berubah."}, status=HTTP_400_BAD_REQUEST
+            )
+        if interest:
+            self.proposal.dosen_tertariks.add(request.user)
+        else:
+            self.proposal.dosen_tertariks.remove(request.user)
+        self.proposal.save()
+
+        return Response({"msg": "Interest berhasil diubah."}, status=HTTP_200_OK)

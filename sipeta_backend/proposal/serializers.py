@@ -10,6 +10,7 @@ class ProposalSerializer(serializers.ModelSerializer):
     mahasiswas = serializers.SerializerMethodField()
     dosen_pembimbings = serializers.SerializerMethodField()
     interaksi_proposals = serializers.SerializerMethodField()
+    dosen_tertariks = serializers.SerializerMethodField()
 
     class Meta:
         model = Proposal
@@ -24,6 +25,7 @@ class ProposalSerializer(serializers.ModelSerializer):
             "created_on",
             "mahasiswas",
             "dosen_pembimbings",
+            "dosen_tertariks",
             "interaksi_proposals",
         ]
 
@@ -40,6 +42,9 @@ class ProposalSerializer(serializers.ModelSerializer):
         return InteraksiProposalSerializer(
             obj.interaksi_proposals.all(), many=True
         ).data
+
+    def get_dosen_tertariks(self, obj):
+        return UserSerializer(obj.dosen_tertariks.all(), many=True).data
 
 
 class InteraksiProposalSerializer(serializers.ModelSerializer):
