@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from sipeta_backend.proposal.constants import (
     PROPOSAL_STATUS_DIBATALKAN,
     PROPOSAL_STATUS_DISETUJUI,
+    PROPOSAL_STATUS_PENDING,
 )
 from sipeta_backend.proposal.forms import (
     InteraksiProposalChangeDosenPembimbingForm,
@@ -21,10 +22,7 @@ from sipeta_backend.proposal.forms import (
     ProposalUpdateBerkasProposalForm,
 )
 from sipeta_backend.proposal.models import AdministrasiProposal, Proposal
-from sipeta_backend.proposal.permissions import (
-    IsMahasiswaCreateProposal,
-    IsProposalUsers,
-)
+from sipeta_backend.proposal.permissions import IsProposalUsers
 from sipeta_backend.proposal.serializers import (
     InteraksiProposalSerializer,
     ProposalListSerializer,
@@ -35,6 +33,7 @@ from sipeta_backend.proposal.validators import (
     validate_dosen_pembimbings_unique,
 )
 from sipeta_backend.semester.models import Semester
+from sipeta_backend.users.constants import ROLE_MAHASISWA
 from sipeta_backend.users.permissions import (
     IsDosenFasilkom,
     IsDosenTa,
@@ -49,12 +48,16 @@ User = get_user_model()
 
 
 class ProposalView(APIView):
-    permission_classes = (permissions.IsAuthenticated, IsMahasiswaCreateProposal)
+    permission_classes = (
+        permissions.IsAuthenticated,
+        IsMahasiswa | IsMethodReadOnly,
+    )
 
     def post(self, request):
         if not AdministrasiProposal._get_status_pengajuan_proposal():
             return Response(
-                {"msg": "Pengajuan proposal belum dibuka"}, status=HTTP_400_BAD_REQUEST
+                {"msg": "Pengajuan proposal sedang ditutup"},
+                status=HTTP_400_BAD_REQUEST,
             )
 
         form = ProposalCreationForm(request.POST, request.FILES)
@@ -228,7 +231,7 @@ class ProposalEditView(APIView):
     permission_classes = (
         permissions.IsAuthenticated,
         IsProposalUsers,
-        IsMahasiswa,
+        IsMahasiswa | IsDosenTa,
     )
 
     @property
@@ -271,8 +274,26 @@ class ProposalEditView(APIView):
         return (serializer.data, True)
 
     def patch(self, request, *args, **kwargs):
+        # only Dosen TA can edit after pengajuan proposal is closed/proposal is reviewed
+        if request.user.role_pengguna == ROLE_MAHASISWA:
+            if not AdministrasiProposal._get_status_pengajuan_proposal():
+                return Response(
+                    {
+                        "msg": "Pengajuan proposal sedang ditutup, tidak dapat mengubah status proposal."
+                    },
+                    status=HTTP_400_BAD_REQUEST,
+                )
+            if self.proposal.status != PROPOSAL_STATUS_PENDING:
+                return Response(
+                    {
+                        "msg": "Proposal sudah direview oleh Dosen TA, tidak dapat mengubah status proposal."
+                    },
+                    status=HTTP_400_BAD_REQUEST,
+                )
+
         data_title, status_title = self.__edit_title(request)
         data_berkas, status_berkas = self.__edit_berkas_proposal(request)
+
         if not status_title and not status_berkas:
             return Response(
                 {"msg": "Data proposal tidak berubah."}, status=HTTP_400_BAD_REQUEST
@@ -322,6 +343,20 @@ class ProposalCancelView(APIView):
         if self.proposal.status == PROPOSAL_STATUS_DIBATALKAN:
             return Response(
                 {"msg": "Proposal sudah dibatalkan."}, status=HTTP_400_BAD_REQUEST
+            )
+        if not AdministrasiProposal._get_status_pengajuan_proposal():
+            return Response(
+                {
+                    "msg": "Pengajuan proposal sedang ditutup, tidak dapat mengubah status proposal."
+                },
+                status=HTTP_400_BAD_REQUEST,
+            )
+        if not self.proposal.status == PROPOSAL_STATUS_PENDING:
+            return Response(
+                {
+                    "msg": "Proposal sudah direview oleh Dosen TA, tidak dapat mengubah status proposal."
+                },
+                status=HTTP_400_BAD_REQUEST,
             )
 
         self.proposal.status = PROPOSAL_STATUS_DIBATALKAN
