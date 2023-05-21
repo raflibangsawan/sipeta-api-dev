@@ -50,20 +50,6 @@ class IsStaffSekre(permissions.BasePermission):
         return bool((request.user) and (request.user.role_pengguna == ROLE_STAFF_SEKRE))
 
 
-class IsDosenTaOrStaffSekre(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return bool(
-            (request.user)
-            and (
-                (
-                    (request.user.role_pengguna == ROLE_DOSEN)
-                    and (request.user.is_dosen_ta)
-                )
-                or (request.user.role_pengguna == ROLE_STAFF_SEKRE)
-            )
-        )
-
-
 class IsAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
         return bool(
