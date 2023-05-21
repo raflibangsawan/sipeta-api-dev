@@ -21,6 +21,7 @@ class UserAdmin(auth_admin.UserAdmin):
                     "name",
                     "email",
                     "kode_identitas",
+                    "program_studi",
                     "role_pengguna",
                     "is_dosen_ta",
                     "is_dosen_eksternal",
