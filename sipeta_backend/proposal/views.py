@@ -6,6 +6,7 @@ from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 from rest_framework.views import APIView
+from rest_framework_csv.renderers import CSVRenderer
 
 from sipeta_backend.proposal.constants import (
     PROPOSAL_STATUS_DIBATALKAN,
@@ -25,6 +26,7 @@ from sipeta_backend.proposal.models import AdministrasiProposal, Proposal
 from sipeta_backend.proposal.permissions import IsProposalUsers
 from sipeta_backend.proposal.serializers import (
     InteraksiProposalSerializer,
+    ProposalDownloadListSerializer,
     ProposalListSerializer,
     ProposalSerializer,
 )
@@ -368,3 +370,20 @@ class ProposalCancelView(APIView):
         interaction = interaction_form.save(proposal=self.proposal, user=request.user)
         serializer = InteraksiProposalSerializer(interaction)
         return Response(serializer.data, status=HTTP_200_OK)
+
+
+class ProposalDownloadListView(APIView):
+    permission_classes = (permissions.IsAuthenticated, IsDosenTa)
+    renderer_classes = (CSVRenderer,)
+
+    def get(self, request, *args, **kwargs):
+        semester = Semester._get_active_semester()
+        proposals = Proposal.objects.filter(
+            semester=semester, status=PROPOSAL_STATUS_PENDING
+        )
+        serializer = ProposalDownloadListSerializer(proposals, many=True)
+        response = Response(data=serializer.data, status=HTTP_200_OK)
+        response[
+            "Content-Disposition"
+        ] = f'attachment; filename="Proposal Pending Semester {semester}.csv"'
+        return response

@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import serializers
 
 from sipeta_backend.proposal.models import InteraksiProposal, Proposal
@@ -97,3 +98,92 @@ class InteraksiProposalSerializer(serializers.ModelSerializer):
             "created_by",
             "created_on",
         ]
+
+
+class ProposalDownloadListSerializer(serializers.ModelSerializer):
+    judul_proposal = serializers.CharField(source="title")
+    nama_mahasiswa_1 = serializers.SerializerMethodField()
+    npm_mahasiswa_1 = serializers.SerializerMethodField()
+    prodi_mahasiswa_1 = serializers.SerializerMethodField()
+    nama_mahasiswa_2 = serializers.SerializerMethodField()
+    npm_mahasiswa_2 = serializers.SerializerMethodField()
+    prodi_mahasiswa_2 = serializers.SerializerMethodField()
+    nama_mahasiswa_3 = serializers.SerializerMethodField()
+    npm_mahasiswa_3 = serializers.SerializerMethodField()
+    prodi_mahasiswa_3 = serializers.SerializerMethodField()
+    nama_dosen_pembimbing_1 = serializers.SerializerMethodField()
+    nama_dosen_pembimbing_2 = serializers.SerializerMethodField()
+    url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Proposal
+        fields = [
+            "judul_proposal",
+            "nama_mahasiswa_1",
+            "npm_mahasiswa_1",
+            "prodi_mahasiswa_1",
+            "nama_mahasiswa_2",
+            "npm_mahasiswa_2",
+            "prodi_mahasiswa_2",
+            "nama_mahasiswa_3",
+            "npm_mahasiswa_3",
+            "prodi_mahasiswa_3",
+            "nama_dosen_pembimbing_1",
+            "nama_dosen_pembimbing_2",
+            "url",
+        ]
+
+    def get_nama_mahasiswa_1(self, obj):
+        return obj.mahasiswas.all()[0].name
+
+    def get_npm_mahasiswa_1(self, obj):
+        return obj.mahasiswas.all()[0].kode_identitas
+
+    def get_prodi_mahasiswa_1(self, obj):
+        return obj.mahasiswas.all()[0].program_studi
+
+    def get_nama_mahasiswa_2(self, obj):
+        if obj.mahasiswas.all().count() < 2:
+            return "-"
+        return obj.mahasiswas.all()[1].name
+
+    def get_npm_mahasiswa_2(self, obj):
+        if obj.mahasiswas.all().count() < 2:
+            return "-"
+        return obj.mahasiswas.all()[1].kode_identitas
+
+    def get_prodi_mahasiswa_2(self, obj):
+        if obj.mahasiswas.all().count() < 2:
+            return "-"
+        return obj.mahasiswas.all()[1].program_studi
+
+    def get_nama_mahasiswa_3(self, obj):
+        if obj.mahasiswas.all().count() < 3:
+            return "-"
+        return obj.mahasiswas.all()[2].name
+
+    def get_npm_mahasiswa_3(self, obj):
+        if obj.mahasiswas.all().count() < 3:
+            return "-"
+        return obj.mahasiswas.all()[2].kode_identitas
+
+    def get_prodi_mahasiswa_3(self, obj):
+        if obj.mahasiswas.all().count() < 3:
+            return "-"
+        return obj.mahasiswas.all()[2].program_studi
+
+    def get_nama_dosen_pembimbing_1(self, obj):
+        if obj.dosen_pembimbings.all().count() < 1:
+            return "-"
+        return obj.dosen_pembimbings.all()[0].name
+
+    def get_nama_dosen_pembimbing_2(self, obj):
+        if obj.dosen_pembimbings.all().count() < 2:
+            return "-"
+        return obj.dosen_pembimbings.all()[1].name
+
+    def get_url(self, obj):
+        path = "/proposal/" + str(obj.id_proposal) + "/"
+        if settings.DEBUG:
+            return "http://localhost:8000" + path
+        return settings.HOST_URL + path
