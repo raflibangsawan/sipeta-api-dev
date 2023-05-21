@@ -21,10 +21,16 @@ class ProposalListSerializer(serializers.ModelSerializer):
         ]
 
     def get_mahasiswas(self, obj):
-        return UserSerializer(obj.mahasiswas.all(), many=True).data
+        return [
+            {"name": mahasiswa.name, "program_studi": mahasiswa.program_studi}
+            for mahasiswa in obj.mahasiswas.all()
+        ]
 
     def get_dosen_pembimbings(self, obj):
-        return UserSerializer(obj.dosen_pembimbings.all(), many=True).data
+        return [
+            {"name": dosen_pembimbing.name}
+            for dosen_pembimbing in obj.dosen_pembimbings.all()
+        ]
 
 
 class ProposalSerializer(serializers.ModelSerializer):
@@ -56,10 +62,20 @@ class ProposalSerializer(serializers.ModelSerializer):
         return obj.berkas_proposal.url
 
     def get_mahasiswas(self, obj):
-        return UserSerializer(obj.mahasiswas.all(), many=True).data
+        return [
+            {
+                "name": mahasiswa.name,
+                "kode_identitas": mahasiswa.kode_identitas,
+                "program_studi": mahasiswa.program_studi,
+            }
+            for mahasiswa in obj.mahasiswas.all()
+        ]
 
     def get_dosen_pembimbings(self, obj):
-        return UserSerializer(obj.dosen_pembimbings.all(), many=True).data
+        return [
+            {"name": dosen_pembimbing.name}
+            for dosen_pembimbing in obj.dosen_pembimbings.all()
+        ]
 
     def get_interaksi_proposals(self, obj):
         return InteraksiProposalSerializer(

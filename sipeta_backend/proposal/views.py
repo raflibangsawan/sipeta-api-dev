@@ -317,7 +317,7 @@ class ProposalDosenInterestView(APIView):
 
     def patch(self, request, *args, **kwargs):
         interest = to_bool(request.POST.get("interest"))
-        if request.user in self.proposal.dosen_tertariks.all() == interest:
+        if (request.user in self.proposal.dosen_tertariks.all()) == interest:
             return Response(
                 {"msg": "Interest tidak berubah."}, status=HTTP_400_BAD_REQUEST
             )
