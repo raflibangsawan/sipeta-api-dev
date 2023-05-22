@@ -6,6 +6,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
+    HTTP_201_CREATED,
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
 )
@@ -18,7 +19,9 @@ from sipeta_backend.users.constants import (
     ROLE_DOSEN,
     ROLE_MAHASISWA,
 )
-from sipeta_backend.users.permissions import IsNotEksternal
+from sipeta_backend.users.forms import UserStaffAndDosenEksternalCreationForm
+from sipeta_backend.users.generators import generate_password
+from sipeta_backend.users.permissions import IsAdmin, IsNotEksternal, IsStaffSekre
 from sipeta_backend.users.serializers import UserSerializer, UserSigninSerializer
 
 User = get_user_model()
@@ -165,6 +168,25 @@ class LogoutView(APIView):
         request.user.auth_token.delete()
         return Response(
             {"msg": "Logout berhasil: Token terhapus dari sistem"}, status=HTTP_200_OK
+        )
+
+
+class UserStaffAndDosenEksternalView(APIView):
+    permission_classes = (permissions.IsAuthenticated, IsAdmin | IsStaffSekre)
+
+    def post(self, request):
+        form = UserStaffAndDosenEksternalCreationForm(request.POST)
+        if form.is_valid():
+            password = generate_password()
+            user = form.save(password=password)
+            return Response(
+                {"username": user.username, "password": password},
+                status=HTTP_201_CREATED,
+            )
+
+        return Response(
+            {"msg": "Gagal menambahkan user", "error": form.errors},
+            status=HTTP_400_BAD_REQUEST,
         )
 
 
