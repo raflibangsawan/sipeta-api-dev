@@ -12,6 +12,7 @@ from rest_framework.status import (
 )
 from rest_framework.views import APIView
 
+from sipeta_backend.constants import EXCEL_FILE_MIME_TYPE
 from sipeta_backend.users.authentication import expires_in, token_expire_handler
 from sipeta_backend.users.constants import (
     DOSEN_FASILKOM_URL,
@@ -24,6 +25,10 @@ from sipeta_backend.users.generators import generate_password
 from sipeta_backend.users.models import create_akun_mahasiswa_from_npm
 from sipeta_backend.users.permissions import IsAdmin, IsNotEksternal, IsStaffSekre
 from sipeta_backend.users.serializers import UserSerializer, UserSigninSerializer
+from sipeta_backend.utils.parser import (
+    get_filename_and_mimetype,
+    parse_xlsx_to_list_of_dict,
+)
 
 User = get_user_model()
 
@@ -230,6 +235,54 @@ class UserMahasiswaRegisterView(APIView):
         return Response(
             {"msg": f"Mahasiswa dengan npm {kode_identitas} berhasil ditambahkan"},
             status=HTTP_201_CREATED,
+        )
+
+
+class BulkRegisterMahasiswaView(APIView):
+    permission_classes = (permissions.IsAuthenticated, IsAdmin | IsStaffSekre)
+
+    def post(self, request):
+        file = request.FILES.get("file")
+        if file is None:
+            return Response(
+                {"msg": "Gagal menambahkan user", "error": "File tidak boleh kosong"},
+                status=HTTP_400_BAD_REQUEST,
+            )
+        _, mime_type = get_filename_and_mimetype(file.name)
+        if mime_type != EXCEL_FILE_MIME_TYPE:
+            return Response(
+                {
+                    "msg": "Gagal menambahkan user",
+                    "error": "File harus berformat excel",
+                },
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+        datas = parse_xlsx_to_list_of_dict(file, ["npm", "program_studi"])
+        created_account = 0
+        errors = []
+        for data in datas:
+            try:
+                create_akun_mahasiswa_from_npm(data["npm"], data["program_studi"])
+                created_account += 1
+            except Exception as e:
+                errors.append(
+                    "Gagal menambahkan user dengan npm {}: {}".format(
+                        data["npm"], str(e)
+                    )
+                )
+
+        if created_account > 0:
+            return Response(
+                {
+                    "msg": f"Berhasil menambahkan {created_account} user",
+                    "errors": errors,
+                },
+                status=HTTP_201_CREATED,
+            )
+        return Response(
+            {"msg": "Gagal menambahkan user", "errors": errors},
+            status=HTTP_400_BAD_REQUEST,
         )
 
 

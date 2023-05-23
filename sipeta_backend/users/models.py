@@ -59,6 +59,11 @@ def create_akun_mahasiswa_from_npm(npm, program_studi):
     Create a new user with the given NPM and program studi.
     Get data from LDAP.
     """
+    try:
+        User.objects.get(kode_identitas=npm)
+        raise ValueError(f"User with NPM {npm} already exists")
+    except User.DoesNotExist:
+        pass
     data_from_ldap = requests.get(MAHASISWA_FASILKOM_URL + npm).json()
     user = User.objects.create_user(
         username=data_from_ldap["username"],
