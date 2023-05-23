@@ -23,7 +23,12 @@ from sipeta_backend.users.constants import (
 from sipeta_backend.users.forms import UserStaffAndDosenEksternalCreationForm
 from sipeta_backend.users.generators import generate_password
 from sipeta_backend.users.models import create_akun_mahasiswa_from_npm
-from sipeta_backend.users.permissions import IsAdmin, IsNotEksternal, IsStaffSekre
+from sipeta_backend.users.permissions import (
+    IsAdmin,
+    IsDosenEksternal,
+    IsNotEksternal,
+    IsStaffSekre,
+)
 from sipeta_backend.users.serializers import UserSerializer, UserSigninSerializer
 from sipeta_backend.utils.parser import (
     get_filename_and_mimetype,
@@ -284,6 +289,51 @@ class BulkRegisterMahasiswaView(APIView):
             {"msg": "Gagal menambahkan user", "errors": errors},
             status=HTTP_400_BAD_REQUEST,
         )
+
+
+class UserChangePasswordView(APIView):
+    permission_classes = (
+        permissions.IsAuthenticated,
+        IsDosenEksternal | IsAdmin | IsStaffSekre,
+    )
+
+    def post(self, request):
+        user = request.user
+        password_old = request.POST.get("password_old")
+
+        if not user.check_password(password_old):
+            return Response({"msg": "Password lama salah"}, status=HTTP_400_BAD_REQUEST)
+
+        password_new = request.POST.get("password_new")
+        password_confirm = request.POST.get("password_confirm")
+
+        if password_new is None or password_new == "":
+            return Response(
+                {"msg": "Password baru tidak boleh kosong"}, status=HTTP_400_BAD_REQUEST
+            )
+
+        if password_confirm is None or password_confirm == "":
+            return Response(
+                {"msg": "Konfirmasi password tidak boleh kosong"},
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+        if password_new == password_old:
+            return Response(
+                {"msg": "Password baru tidak boleh sama dengan password lama"},
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+        if password_new != password_confirm:
+            return Response(
+                {"msg": "Password baru tidak sama dengan konfirmasi password"},
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(password_new)
+        user.save()
+
+        return Response({"msg": "Password berhasil diubah"}, status=HTTP_200_OK)
 
 
 class AbstractUserView(APIView):
