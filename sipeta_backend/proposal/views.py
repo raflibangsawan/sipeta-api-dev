@@ -13,6 +13,7 @@ from sipeta_backend.proposal.constants import (
     PROPOSAL_STATUS_DISETUJUI,
     PROPOSAL_STATUS_PENDING,
 )
+from sipeta_backend.proposal.filters import ProposalFilter
 from sipeta_backend.proposal.forms import (
     InteraksiProposalChangeDosenPembimbingForm,
     InteraksiProposalChangeStatusForm,
@@ -88,6 +89,9 @@ class ProposalView(APIView):
                 | Q(mahasiswas__kode_identitas__iregex=src)
                 | Q(dosen_pembimbings__kode_identitas__iregex=src)
             ).distinct()
+
+        # proposal list filter feature
+        proposals = ProposalFilter.filter(proposals, **(request.GET.dict()))
 
         # proposal list pagination feature
         paginator = Pagination(
