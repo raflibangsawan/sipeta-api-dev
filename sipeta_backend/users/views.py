@@ -297,7 +297,7 @@ class UserChangePasswordView(APIView):
         IsDosenEksternal | IsAdmin | IsStaffSekre,
     )
 
-    def post(self, request):
+    def patch(self, request):
         user = request.user
         password_old = request.POST.get("password_old")
 
