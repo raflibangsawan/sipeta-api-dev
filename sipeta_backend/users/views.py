@@ -1,3 +1,5 @@
+import json
+
 import requests
 from django.contrib.auth import authenticate, get_user_model
 from django.db.models import Q
@@ -362,3 +364,81 @@ class MahasiswaView(AbstractUserView):
 
 class DosenView(AbstractUserView):
     queryset = User.objects.filter(role_pengguna=ROLE_DOSEN)
+
+
+class DosenFasilkomView(AbstractUserView):
+    queryset = User.objects.filter(
+        role_pengguna=ROLE_DOSEN, is_dosen_eksternal=False, is_dosen_ta=False
+    )
+
+
+class DosenTAView(AbstractUserView):
+    permission_classes = (permissions.IsAuthenticated, IsAdmin | IsStaffSekre)
+    queryset = User.objects.filter(role_pengguna=ROLE_DOSEN, is_dosen_ta=True)
+
+    def put(self, request):
+        list_dosen = json.loads(request.POST.get("list_dosen"))
+        dosens = []
+        errors = []
+        for id_dosen in list_dosen:
+            try:
+                dosen = User.objects.get(id_user=id_dosen)
+            except User.DoesNotExist:
+                errors.append(f"Dosen dengan id {id_dosen} tidak ditemukan")
+                continue
+            if dosen.role_pengguna != ROLE_DOSEN:
+                errors.append(f"User dengan id {id_dosen} bukan dosen")
+                continue
+            if dosen.is_dosen_ta:
+                errors.append(f"Dosen dengan id {id_dosen} sudah menjadi dosen TA")
+                continue
+            if dosen.is_dosen_eksternal:
+                errors.append(
+                    f"Tidak bisa menambahkan dosen eksternal dengan id {id_dosen} sebagai dosen TA"
+                )
+                continue
+
+            dosens.append(dosen)
+
+        if errors != []:
+            return Response(
+                {"msg": "Gagal menambahkan dosen TA", "errors": errors},
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+        for dosen in dosens:
+            dosen.is_dosen_ta = True
+            dosen.save()
+
+        return Response({"msg": "Berhasil menambahkan dosen TA"}, status=HTTP_200_OK)
+
+    def delete(self, request):
+        list_dosen = json.loads(request.POST.get("list_dosen"))
+        dosens = []
+        errors = []
+        for id_dosen in list_dosen:
+            try:
+                dosen = User.objects.get(id_user=id_dosen)
+            except User.DoesNotExist:
+                errors.append(f"Dosen dengan id {id_dosen} tidak ditemukan")
+                continue
+            if dosen.role_pengguna != ROLE_DOSEN:
+                errors.append(f"User dengan id {id_dosen} bukan dosen")
+                continue
+            if not dosen.is_dosen_ta:
+                errors.append(f"Dosen dengan id {id_dosen} bukan dosen TA")
+                continue
+
+            dosens.append(dosen)
+
+        if errors != []:
+            return Response(
+                {"msg": "Gagal menghapus dosen TA", "errors": errors},
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+        for dosen in dosens:
+            dosen.is_dosen_ta = False
+            dosen.save()
+
+        return Response({"msg": "Berhasil menghapus dosen TA"}, status=HTTP_200_OK)

@@ -45,6 +45,8 @@ class User(AbstractUser):
         elif self.role_pengguna == ROLE_DOSEN:
             if self.is_dosen_ta:
                 return "8714"
+            if self.is_dosen_eksternal:
+                return "8026"
             return "8465"
         elif self.role_pengguna == ROLE_STAFF_SEKRE:
             return "9344"
