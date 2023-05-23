@@ -21,6 +21,7 @@ from sipeta_backend.users.constants import (
 )
 from sipeta_backend.users.forms import UserStaffAndDosenEksternalCreationForm
 from sipeta_backend.users.generators import generate_password
+from sipeta_backend.users.models import create_akun_mahasiswa_from_npm
 from sipeta_backend.users.permissions import IsAdmin, IsNotEksternal, IsStaffSekre
 from sipeta_backend.users.serializers import UserSerializer, UserSigninSerializer
 
@@ -171,7 +172,7 @@ class LogoutView(APIView):
         )
 
 
-class UserStaffAndDosenEksternalView(APIView):
+class UserStaffAndDosenEksternalRegisterView(APIView):
     permission_classes = (permissions.IsAuthenticated, IsAdmin | IsStaffSekre)
 
     def post(self, request):
@@ -187,6 +188,48 @@ class UserStaffAndDosenEksternalView(APIView):
         return Response(
             {"msg": "Gagal menambahkan user", "error": form.errors},
             status=HTTP_400_BAD_REQUEST,
+        )
+
+
+class UserMahasiswaRegisterView(APIView):
+    permission_classes = (permissions.IsAuthenticated, IsAdmin | IsStaffSekre)
+
+    def post(self, request):
+        kode_identitas = request.POST.get("kode_identitas")
+        program_studi = request.POST.get("program_studi")
+
+        if kode_identitas is None or program_studi is None:
+            return Response(
+                {
+                    "msg": "Gagal menambahkan user",
+                    "error": "kode_identitas dan program_studi tidak boleh kosong",
+                },
+                status=HTTP_400_BAD_REQUEST,
+            )
+        if not kode_identitas.isdigit():
+            return Response(
+                {
+                    "msg": "Gagal menambahkan user",
+                    "error": "kode_identitas harus berupa angka",
+                },
+                status=HTTP_400_BAD_REQUEST,
+            )
+        try:
+            User.objects.get(kode_identitas=kode_identitas)
+            return Response(
+                {
+                    "msg": "Gagal menambahkan user",
+                    "error": "kode_identitas sudah terdaftar",
+                },
+                status=HTTP_400_BAD_REQUEST,
+            )
+        except User.DoesNotExist:
+            pass
+
+        create_akun_mahasiswa_from_npm(npm=kode_identitas, program_studi=program_studi)
+        return Response(
+            {"msg": f"Mahasiswa dengan npm {kode_identitas} berhasil ditambahkan"},
+            status=HTTP_201_CREATED,
         )
 
 
