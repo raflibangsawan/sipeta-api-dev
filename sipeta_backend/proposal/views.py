@@ -36,7 +36,7 @@ from sipeta_backend.proposal.validators import (
     validate_dosen_pembimbings_unique,
 )
 from sipeta_backend.semester.models import Semester
-from sipeta_backend.users.constants import ROLE_MAHASISWA
+from sipeta_backend.users.constants import ROLE_DOSEN, ROLE_MAHASISWA
 from sipeta_backend.users.permissions import (
     IsDosenFasilkom,
     IsDosenTa,
@@ -74,6 +74,11 @@ class ProposalView(APIView):
         proposals = Proposal.objects.filter(
             Q(semester=active_semester) | Q(status=PROPOSAL_STATUS_DISETUJUI)
         )
+
+        if request.user.role_pengguna == ROLE_DOSEN and request.user.is_dosen_eksternal:
+            proposals = proposals.filter(
+                dosen_pembimbings__in=[request.user]
+            ).distinct()
 
         # proposal list search feature
         src = request.GET.get("src", None)
