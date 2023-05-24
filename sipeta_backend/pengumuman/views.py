@@ -50,3 +50,7 @@ class PengumumanDetailView(APIView):
     def get(self, request, *args, **kwargs):
         serializer = PengumumanSerializer(self.pengumuman)
         return Response(serializer.data, status=HTTP_200_OK)
+
+    def delete(self, request, *args, **kwargs):
+        self.pengumuman.delete()
+        return Response({"msg": "Pengumuman berhasil dihapus"}, status=HTTP_200_OK)
