@@ -32,12 +32,16 @@ class Pengumuman(models.Model):
     content = models.TextField(max_length=2048)
     lampiran = models.FileField(
         upload_to=hash_filename_lampiran,
+        blank=True,
         null=False,
         validators=[validate_file_size, validate_file_extension],
     )
-    nama_lampiran = models.CharField(max_length=250, null=False)
+    nama_lampiran = models.CharField(max_length=250, blank=True, null=False)
 
     created_by = models.ForeignKey(
         User, null=False, on_delete=models.CASCADE, related_name="+"
     )
     created_on = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["semester", "-created_on"]
