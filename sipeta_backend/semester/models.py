@@ -8,6 +8,7 @@ from sipeta_backend.semester.constants import (
     SEMESTER_GASAL,
     SEMESTER_GENAP,
 )
+from sipeta_backend.semester.validators import validate_periode_semester
 
 
 def calculate_current_semester():
@@ -31,7 +32,10 @@ class Semester(models.Model):
         choices=SEMESTER_CHOICES,
     )
     periode = models.CharField(
-        max_length=9, null=False, default=calculate_current_semester()[1]
+        max_length=9,
+        null=False,
+        default=calculate_current_semester()[1],
+        validators=[validate_periode_semester],
     )
 
     is_active = models.BooleanField(default=True)
@@ -47,3 +51,9 @@ class Semester(models.Model):
     def _get_active_semester():
         active_semester = Semester.objects.filter(is_active=True).first()
         return active_semester if active_semester else Semester.objects.first()
+
+    @staticmethod
+    def _set_active_semester(obj):
+        Semester.objects.filter(is_active=True).update(is_active=False)
+        obj.is_active = True
+        obj.save()

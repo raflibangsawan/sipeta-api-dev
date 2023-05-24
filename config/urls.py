@@ -22,6 +22,7 @@ urlpatterns = [
     path(
         "pengumuman/", include("sipeta_backend.pengumuman.urls", namespace="pengumuman")
     ),
+    path("semester/", include("sipeta_backend.semester.urls", namespace="semester")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # API URLS
