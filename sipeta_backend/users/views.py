@@ -6,11 +6,13 @@ from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
+    HTTP_201_CREATED,
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
 )
 from rest_framework.views import APIView
 
+from sipeta_backend.constants import EXCEL_FILE_MIME_TYPE
 from sipeta_backend.users.authentication import expires_in, token_expire_handler
 from sipeta_backend.users.constants import (
     DOSEN_FASILKOM_URL,
@@ -18,8 +20,20 @@ from sipeta_backend.users.constants import (
     ROLE_DOSEN,
     ROLE_MAHASISWA,
 )
-from sipeta_backend.users.permissions import IsNotEksternal
+from sipeta_backend.users.forms import UserStaffAndDosenEksternalCreationForm
+from sipeta_backend.users.generators import generate_password
+from sipeta_backend.users.models import create_akun_mahasiswa_from_npm
+from sipeta_backend.users.permissions import (
+    IsAdmin,
+    IsDosenEksternal,
+    IsNotEksternal,
+    IsStaffSekre,
+)
 from sipeta_backend.users.serializers import UserSerializer, UserSigninSerializer
+from sipeta_backend.utils.parser import (
+    get_filename_and_mimetype,
+    parse_xlsx_to_list_of_dict,
+)
 
 User = get_user_model()
 
@@ -166,6 +180,160 @@ class LogoutView(APIView):
         return Response(
             {"msg": "Logout berhasil: Token terhapus dari sistem"}, status=HTTP_200_OK
         )
+
+
+class UserStaffAndDosenEksternalRegisterView(APIView):
+    permission_classes = (permissions.IsAuthenticated, IsAdmin | IsStaffSekre)
+
+    def post(self, request):
+        form = UserStaffAndDosenEksternalCreationForm(request.POST)
+        if form.is_valid():
+            password = generate_password()
+            user = form.save(password=password)
+            return Response(
+                {"username": user.username, "password": password},
+                status=HTTP_201_CREATED,
+            )
+
+        return Response(
+            {"msg": "Gagal menambahkan user", "error": form.errors},
+            status=HTTP_400_BAD_REQUEST,
+        )
+
+
+class UserMahasiswaRegisterView(APIView):
+    permission_classes = (permissions.IsAuthenticated, IsAdmin | IsStaffSekre)
+
+    def post(self, request):
+        kode_identitas = request.POST.get("kode_identitas")
+        program_studi = request.POST.get("program_studi")
+
+        if kode_identitas is None or program_studi is None:
+            return Response(
+                {
+                    "msg": "Gagal menambahkan user",
+                    "error": "kode_identitas dan program_studi tidak boleh kosong",
+                },
+                status=HTTP_400_BAD_REQUEST,
+            )
+        if not kode_identitas.isdigit():
+            return Response(
+                {
+                    "msg": "Gagal menambahkan user",
+                    "error": "kode_identitas harus berupa angka",
+                },
+                status=HTTP_400_BAD_REQUEST,
+            )
+        try:
+            User.objects.get(kode_identitas=kode_identitas)
+            return Response(
+                {
+                    "msg": "Gagal menambahkan user",
+                    "error": "kode_identitas sudah terdaftar",
+                },
+                status=HTTP_400_BAD_REQUEST,
+            )
+        except User.DoesNotExist:
+            pass
+
+        create_akun_mahasiswa_from_npm(npm=kode_identitas, program_studi=program_studi)
+        return Response(
+            {"msg": f"Mahasiswa dengan npm {kode_identitas} berhasil ditambahkan"},
+            status=HTTP_201_CREATED,
+        )
+
+
+class BulkRegisterMahasiswaView(APIView):
+    permission_classes = (permissions.IsAuthenticated, IsAdmin | IsStaffSekre)
+
+    def post(self, request):
+        file = request.FILES.get("file")
+        if file is None:
+            return Response(
+                {"msg": "Gagal menambahkan user", "error": "File tidak boleh kosong"},
+                status=HTTP_400_BAD_REQUEST,
+            )
+        _, mime_type = get_filename_and_mimetype(file.name)
+        if mime_type != EXCEL_FILE_MIME_TYPE:
+            return Response(
+                {
+                    "msg": "Gagal menambahkan user",
+                    "error": "File harus berformat excel",
+                },
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+        datas = parse_xlsx_to_list_of_dict(file, ["npm", "program_studi"])
+        created_account = 0
+        errors = []
+        for data in datas:
+            try:
+                create_akun_mahasiswa_from_npm(data["npm"], data["program_studi"])
+                created_account += 1
+            except Exception as e:
+                errors.append(
+                    "Gagal menambahkan user dengan npm {}: {}".format(
+                        data["npm"], str(e)
+                    )
+                )
+
+        if created_account > 0:
+            return Response(
+                {
+                    "msg": f"Berhasil menambahkan {created_account} user",
+                    "errors": errors,
+                },
+                status=HTTP_201_CREATED,
+            )
+        return Response(
+            {"msg": "Gagal menambahkan user", "errors": errors},
+            status=HTTP_400_BAD_REQUEST,
+        )
+
+
+class UserChangePasswordView(APIView):
+    permission_classes = (
+        permissions.IsAuthenticated,
+        IsDosenEksternal | IsAdmin | IsStaffSekre,
+    )
+
+    def patch(self, request):
+        user = request.user
+        password_old = request.POST.get("password_old")
+
+        if not user.check_password(password_old):
+            return Response({"msg": "Password lama salah"}, status=HTTP_400_BAD_REQUEST)
+
+        password_new = request.POST.get("password_new")
+        password_confirm = request.POST.get("password_confirm")
+
+        if password_new is None or password_new == "":
+            return Response(
+                {"msg": "Password baru tidak boleh kosong"}, status=HTTP_400_BAD_REQUEST
+            )
+
+        if password_confirm is None or password_confirm == "":
+            return Response(
+                {"msg": "Konfirmasi password tidak boleh kosong"},
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+        if password_new == password_old:
+            return Response(
+                {"msg": "Password baru tidak boleh sama dengan password lama"},
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+        if password_new != password_confirm:
+            return Response(
+                {"msg": "Password baru tidak sama dengan konfirmasi password"},
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(password_new)
+        user.save()
+
+        return Response({"msg": "Password berhasil diubah"}, status=HTTP_200_OK)
 
 
 class AbstractUserView(APIView):

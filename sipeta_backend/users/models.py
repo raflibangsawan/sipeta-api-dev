@@ -1,10 +1,12 @@
 import uuid
 
+import requests
 from django.contrib.auth.models import AbstractUser
 from django.db.models import BooleanField, CharField, UUIDField
 from django.utils.translation import gettext_lazy as _
 
 from sipeta_backend.users.constants import (
+    MAHASISWA_FASILKOM_URL,
     PRODI_CHOICES,
     ROLE_ADMIN,
     ROLE_DOSEN,
@@ -16,8 +18,6 @@ from sipeta_backend.users.constants import (
 class User(AbstractUser):
     """
     Default custom user model for SIPETA Backend.
-    If adding fields that need to be filled at user signup,
-    check forms.SignupForm and forms.SocialSignupForms accordingly.
     """
 
     id_user = UUIDField(_("ID"), default=uuid.uuid4, editable=False)
@@ -52,3 +52,27 @@ class User(AbstractUser):
             return "9812"
         else:
             return "0000"
+
+
+def create_akun_mahasiswa_from_npm(npm, program_studi):
+    """
+    Create a new user with the given NPM and program studi.
+    Get data from LDAP.
+    """
+    try:
+        User.objects.get(kode_identitas=npm)
+        raise ValueError(f"User with NPM {npm} already exists")
+    except User.DoesNotExist:
+        pass
+    data_from_ldap = requests.get(MAHASISWA_FASILKOM_URL + npm).json()
+    user = User.objects.create_user(
+        username=data_from_ldap["username"],
+        name=data_from_ldap["nama"],
+        email=data_from_ldap["email"],
+        kode_identitas=npm,
+        role_pengguna=ROLE_MAHASISWA,
+        program_studi=program_studi,
+    )
+    user.set_unusable_password()
+    user.save()
+    return user
