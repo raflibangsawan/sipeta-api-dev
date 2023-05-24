@@ -13,6 +13,7 @@ from sipeta_backend.users.permissions import (
     IsMethodReadOnly,
     IsStaffSekre,
 )
+from sipeta_backend.utils.pagination import Pagination
 from sipeta_backend.utils.string import to_bool
 
 
@@ -25,8 +26,21 @@ class PengumumanView(APIView):
     def get(self, request):
         current_semester = Semester._get_active_semester()
         pengumumans = Pengumuman.objects.filter(semester=current_semester)
+
+        # pengumuman list pagination feature
+        paginator = Pagination(
+            pengumumans, request.GET.get("page"), request.GET.get("per_page")
+        )
+        pengumumans, paginator = paginator.get_content()
+
         serializer = PengumumanSerializer(pengumumans, many=True)
-        return Response(serializer.data, status=HTTP_200_OK)
+        return Response(
+            {
+                "pages_num": paginator.paginator.num_pages,
+                "pengumumans": serializer.data,
+            },
+            status=HTTP_200_OK,
+        )
 
     def post(self, request):
         form = PengumumanCreationForm(request.POST, request.FILES)
