@@ -18,3 +18,20 @@ class PengumumanCreationForm(forms.ModelForm):
         if commit:
             pengumuman.save()
         return pengumuman
+
+
+class PengumumanEditForm(forms.ModelForm):
+    class Meta:
+        model = Pengumuman
+        fields = ["title", "content", "lampiran"]
+
+    def save(self, commit=True, *args, **kwargs):
+        pengumuman = super().save(commit=False)
+        if kwargs.get("is_new_lampiran"):
+            pengumuman.nama_lampiran = self.cleaned_data["lampiran"].name
+        elif kwargs.get("is_clear_lampiran"):
+            pengumuman.lampiran.delete()
+            pengumuman.nama_lampiran = ""
+        if commit:
+            pengumuman.save()
+        return pengumuman
