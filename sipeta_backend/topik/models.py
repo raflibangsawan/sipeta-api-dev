@@ -13,8 +13,8 @@ from sipeta_backend.users.models import User
 
 
 class Bidang(models.Model):
-    name = models.CharField(max_length=250, null=False)
-    short = models.CharField(max_length=10, null=False)
+    name = models.CharField(max_length=250, null=False, unique=True)
+    short = models.CharField(max_length=10, null=False, unique=True)
 
     def __str__(self) -> str:
         return self.name
