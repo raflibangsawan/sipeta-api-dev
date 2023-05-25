@@ -108,9 +108,7 @@ class ProposalView(APIView):
         return Response(
             {
                 "status_pengajuan_proposal": AdministrasiProposal._get_status_pengajuan_proposal(),
-                "page_ranges": paginator.paginator.get_elided_page_range(
-                    paginator.number, on_each_side=1, on_ends=1
-                ),
+                "num_pages": paginator.paginator.num_pages,
                 "proposals": serializer.data,
             },
             status=HTTP_200_OK,
