@@ -1,3 +1,7 @@
+import json
+from datetime import datetime
+
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from rest_framework import permissions
 from rest_framework.response import Response
@@ -6,6 +10,7 @@ from rest_framework.views import APIView
 
 from sipeta_backend.topik.forms import BidangCreationForm, TopikCreationForm
 from sipeta_backend.topik.models import Bidang, Topik
+from sipeta_backend.topik.permissions import IsTopikUsers
 from sipeta_backend.topik.serializers import (
     BidangSerializer,
     TopikDetailSerializer,
@@ -50,7 +55,10 @@ class TopikView(APIView):
 
 
 class TopikDetailView(APIView):
-    permission_classes = (permissions.AllowAny,)
+    permission_classes = (
+        IsMethodReadOnly
+        | (permissions.IsAuthenticated & IsDosenFasilkom & IsTopikUsers),
+    )
 
     @property
     def topik(self):
@@ -66,6 +74,56 @@ class TopikDetailView(APIView):
         else:
             serializer = TopikSerializer(self.topik)
         return Response(serializer.data, status=HTTP_200_OK)
+
+    def put(self, requests, *args, **kwargs):
+        editable_fields = [
+            "title",
+            "ketersediaan",
+            "pengerjaan",
+            "content",
+            "list_bidang",
+        ]
+        errors = []
+        topik = self.topik
+        for field in editable_fields:
+            if field not in requests.POST:
+                errors.append(f"Field {field} is required")
+                continue
+
+            if field != "list_bidang":
+                setattr(topik, field, requests.POST.get(field))
+                continue
+
+            list_bidang = json.loads(requests.POST.get("list_bidang"))
+            bidangs = []
+            for id_bidang in list_bidang:
+                try:
+                    bidangs.append(Bidang.objects.get(id=id_bidang))
+                except Bidang.DoesNotExist:
+                    errors.append(f"Bidang dengan id {id_bidang} tidak ditemukan")
+
+        try:
+            topik.full_clean()
+        except ValidationError as e:
+            errors += e.messages
+
+        if errors:
+            return Response(
+                {"msg": "Topik gagal diupdate", "errors": errors},
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+        topik.save()
+        topik.bidangs.set(bidangs)
+
+        serializer = TopikSerializer(self.topik)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    def delete(self, request, *args, **kwargs):
+        topik = self.topik
+        topik.deleted_on = datetime.now()
+        topik.save()
+        return Response({"msg": "Topik berhasil dihapus"}, status=HTTP_200_OK)
 
 
 class BidangView(APIView):
