@@ -20,7 +20,8 @@ class TopikCreationForm(forms.ModelForm):
 
     def save(self, commit=True, *args, **kwargs):
         topik = super().save(commit=False)
-        topik.created_by = kwargs.get("created_by")
+        if kwargs.get("created_by"):
+            topik.created_by = kwargs.get("created_by")
         if commit:
             topik.save()
             topik.bidangs.set(self.cleaned_data["bidangs"])
@@ -28,7 +29,10 @@ class TopikCreationForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        list_bidang = json.loads(cleaned_data.get("list_bidang"))
+        try:
+            list_bidang = json.loads(cleaned_data.get("list_bidang"))
+        except json.JSONDecodeError:
+            raise forms.ValidationError("Format list_bidang tidak valid")
         bidangs = []
         for id_bidang in list_bidang:
             try:
@@ -39,3 +43,8 @@ class TopikCreationForm(forms.ModelForm):
                 )
         cleaned_data["bidangs"] = bidangs
         return cleaned_data
+
+
+class TopikUpdateForm(TopikCreationForm):
+    class Meta(TopikCreationForm.Meta):
+        fields = TopikCreationForm.Meta.fields + ["ketersediaan"]
