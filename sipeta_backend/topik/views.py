@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 from rest_framework.views import APIView
 
-from sipeta_backend.topik.forms import BidangCreationForm
+from sipeta_backend.topik.forms import BidangCreationForm, TopikCreationForm
 from sipeta_backend.topik.models import Bidang, Topik
 from sipeta_backend.topik.serializers import (
     BidangSerializer,
@@ -16,7 +16,9 @@ from sipeta_backend.utils.pagination import Pagination
 
 
 class TopikView(APIView):
-    permission_classes = (permissions.AllowAny,)
+    permission_classes = (
+        IsMethodReadOnly | (permissions.IsAuthenticated & IsDosenFasilkom),
+    )
 
     def get(self, request):
         topiks = Topik.objects.filter(deleted_on__isnull=True)
@@ -31,6 +33,19 @@ class TopikView(APIView):
         return Response(
             {"num_pages": paginator.paginator.num_pages, "topiks": serializer.data},
             status=HTTP_200_OK,
+        )
+
+    def post(self, request):
+        form = TopikCreationForm(request.POST)
+        if form.is_valid():
+            topik = form.save(created_by=request.user)
+            return Response(
+                {"msg": "Topik berhasil ditambahkan", "id": topik.id_topik},
+                status=HTTP_201_CREATED,
+            )
+        return Response(
+            {"msg": "Topik gagal ditambahkan", "errors": form.errors},
+            status=HTTP_400_BAD_REQUEST,
         )
 
 
