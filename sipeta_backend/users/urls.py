@@ -2,6 +2,7 @@ from django.urls import path
 
 from sipeta_backend.users.views import (
     BulkRegisterMahasiswaView,
+    DaftarDosenView,
     DosenFasilkomView,
     DosenTAView,
     DosenView,
@@ -25,4 +26,5 @@ urlpatterns = [
     path("dosen_fasilkom", view=DosenFasilkomView.as_view()),
     path("mahasiswa", view=MahasiswaView.as_view(), name="mahasiswa"),
     path("dosen", view=DosenView.as_view(), name="dosen"),
+    path("daftar_dosen", view=DaftarDosenView.as_view()),
 ]
