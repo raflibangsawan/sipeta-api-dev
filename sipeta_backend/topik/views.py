@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 from rest_framework.views import APIView
 
+from sipeta_backend.topik.filters import TopikFilter
 from sipeta_backend.topik.forms import BidangCreationForm, TopikCreationForm
 from sipeta_backend.topik.models import Bidang, Topik
 from sipeta_backend.topik.permissions import IsTopikUsers
@@ -27,6 +28,17 @@ class TopikView(APIView):
 
     def get(self, request):
         topiks = Topik.objects.filter(deleted_on__isnull=True)
+
+        # topik list search feature
+        src = request.GET.get("src", None)
+        if src:
+            src = ".*" + src.replace(" ", ".*") + ".*"
+            topiks = topiks.filter(
+                Q(title__iregex=src) | Q(created_by__name__iregex=src)
+            ).distinct()
+
+        # topik list filter feature
+        topiks = TopikFilter.filter(topiks, **(request.GET.dict()))
 
         # topik list pagination feature
         paginator = Pagination(
