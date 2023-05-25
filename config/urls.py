@@ -19,6 +19,7 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
     path("proposal/", include("sipeta_backend.proposal.urls", namespace="proposal")),
+    path("topik/", include("sipeta_backend.topik.urls", namespace="topik")),
     path(
         "pengumuman/", include("sipeta_backend.pengumuman.urls", namespace="pengumuman")
     ),
