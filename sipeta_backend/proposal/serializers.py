@@ -2,7 +2,6 @@ from django.conf import settings
 from rest_framework import serializers
 
 from sipeta_backend.proposal.models import InteraksiProposal, Proposal
-from sipeta_backend.users.serializers import UserSerializer
 
 
 class ProposalListSerializer(serializers.ModelSerializer):
@@ -37,6 +36,7 @@ class ProposalListSerializer(serializers.ModelSerializer):
 class ProposalSerializer(serializers.ModelSerializer):
     semester = serializers.StringRelatedField()
     berkas_proposal = serializers.SerializerMethodField()
+    created_by = serializers.StringRelatedField()
     mahasiswas = serializers.SerializerMethodField()
     dosen_pembimbings = serializers.SerializerMethodField()
     interaksi_proposals = serializers.SerializerMethodField()
@@ -52,6 +52,7 @@ class ProposalSerializer(serializers.ModelSerializer):
             "berkas_proposal",
             "nama_berkas_proposal",
             "status",
+            "created_by",
             "created_on",
             "mahasiswas",
             "dosen_pembimbings",
@@ -84,7 +85,10 @@ class ProposalSerializer(serializers.ModelSerializer):
         ).data
 
     def get_dosen_tertariks(self, obj):
-        return UserSerializer(obj.dosen_tertariks.all(), many=True).data
+        return [
+            {"name": dosen_tertarik.name}
+            for dosen_tertarik in obj.dosen_tertariks.all()
+        ]
 
 
 class InteraksiProposalSerializer(serializers.ModelSerializer):

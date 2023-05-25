@@ -147,7 +147,20 @@ class ProposalDetailView(APIView):
 
     def get(self, request, *args, **kwargs):
         serializer = ProposalSerializer(self.proposal)
-        return Response(serializer.data, status=HTTP_200_OK)
+        is_mahasiswa_anggota = self.proposal.mahasiswas.filter(
+            id=request.user.id
+        ).exists()
+        is_dosen_tertarik = self.proposal.dosen_tertariks.filter(
+            id=request.user.id
+        ).exists()
+        return Response(
+            {
+                "proposal": serializer.data,
+                "is_mahasiswa_anggota": is_mahasiswa_anggota,
+                "is_dosen_tertarik": is_dosen_tertarik,
+            },
+            status=HTTP_200_OK,
+        )
 
     def post(self, request, *args, **kwargs):
         form = InteraksiProposalCommentForm(request.POST)
