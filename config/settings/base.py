@@ -86,6 +86,7 @@ LOCAL_APPS = [
     # Your stuff: custom apps go here
     "sipeta_backend.semester",
     "sipeta_backend.proposal",
+    "sipeta_backend.topik",
     "sipeta_backend.pengumuman",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
