@@ -36,7 +36,7 @@ class PengumumanView(APIView):
         serializer = PengumumanSerializer(pengumumans, many=True)
         return Response(
             {
-                "pages_num": paginator.paginator.num_pages,
+                "num_pages": paginator.paginator.num_pages,
                 "pengumumans": serializer.data,
             },
             status=HTTP_200_OK,
