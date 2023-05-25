@@ -31,7 +31,12 @@ from sipeta_backend.users.permissions import (
     IsNotEksternal,
     IsStaffSekre,
 )
-from sipeta_backend.users.serializers import UserSerializer, UserSigninSerializer
+from sipeta_backend.users.serializers import (
+    DaftarDosenSerializer,
+    UserSerializer,
+    UserSigninSerializer,
+)
+from sipeta_backend.utils.pagination import Pagination
 from sipeta_backend.utils.parser import (
     get_filename_and_mimetype,
     parse_xlsx_to_list_of_dict,
@@ -442,3 +447,33 @@ class DosenTAView(AbstractUserView):
             dosen.save()
 
         return Response({"msg": "Berhasil menghapus dosen TA"}, status=HTTP_200_OK)
+
+
+class DaftarDosenView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        dosens = User.objects.filter(role_pengguna=ROLE_DOSEN, is_dosen_eksternal=False)
+
+        # daftar dosen search feature
+        src = request.GET.get("src", None)
+        if src:
+            if not src.isdigit():
+                src = ".*" + src.replace(" ", ".*") + ".*"
+            else:
+                src = "^" + src
+            dosens = dosens.filter(
+                Q(kode_identitas__iregex=src) | Q(name__iregex=src)
+            ).distinct()
+
+        # daftar dosen pagination feature
+        paginator = Pagination(
+            dosens, request.GET.get("page"), request.GET.get("per_page")
+        )
+        dosens, paginator = paginator.get_content()
+
+        serializer = DaftarDosenSerializer(dosens, many=True)
+        return Response(
+            {"num_pages": paginator.paginator.num_pages, "dosens": serializer.data},
+            status=HTTP_200_OK,
+        )
