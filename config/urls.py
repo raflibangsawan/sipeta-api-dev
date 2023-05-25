@@ -19,6 +19,9 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
     path("proposal/", include("sipeta_backend.proposal.urls", namespace="proposal")),
+    path(
+        "pengumuman/", include("sipeta_backend.pengumuman.urls", namespace="pengumuman")
+    ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # API URLS
