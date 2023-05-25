@@ -4,7 +4,12 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from rest_framework import permissions
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST
+from rest_framework.status import (
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+    HTTP_400_BAD_REQUEST,
+    HTTP_403_FORBIDDEN,
+)
 from rest_framework.views import APIView
 from rest_framework_csv.renderers import CSVRenderer
 
@@ -22,6 +27,7 @@ from sipeta_backend.proposal.forms import (
     InteraksiProposalEditJudulForm,
     ProposalCreationForm,
     ProposalUpdateBerkasProposalForm,
+    ProposalUpdateForm,
 )
 from sipeta_backend.proposal.models import AdministrasiProposal, Proposal
 from sipeta_backend.proposal.permissions import IsProposalUsers
@@ -60,12 +66,12 @@ class ProposalView(APIView):
         if not AdministrasiProposal._get_status_pengajuan_proposal():
             return Response(
                 {"msg": "Pengajuan proposal sedang ditutup"},
-                status=HTTP_400_BAD_REQUEST,
+                status=HTTP_403_FORBIDDEN,
             )
 
         form = ProposalCreationForm(request.POST, request.FILES)
         if form.is_valid():
-            proposal = form.save(user=request.user)
+            proposal = form.save(user=request.user, is_new_berkas_proposal=True)
             return Response({"id": proposal.id_proposal}, status=HTTP_201_CREATED)
         return Response(form.errors, status=HTTP_400_BAD_REQUEST)
 
@@ -145,6 +151,14 @@ class ProposalDetailView(APIView):
             self._proposal = Proposal.objects.get(id_proposal=self.kwargs["id"])
         return self._proposal
 
+    def __convert_dosen_pembimbing_to_str(self, dosen_pembimbings):
+        if len(dosen_pembimbings) == 0:
+            return "tidak ada dosen pembimbing"
+        elif len(dosen_pembimbings) == 1:
+            return dosen_pembimbings[0].name
+        else:
+            return dosen_pembimbings[0].name + " dan " + dosen_pembimbings[1].name
+
     def get(self, request, *args, **kwargs):
         serializer = ProposalSerializer(self.proposal)
         is_mahasiswa_anggota = self.proposal.mahasiswas.filter(
@@ -169,6 +183,119 @@ class ProposalDetailView(APIView):
             serializer = InteraksiProposalSerializer(comment)
             return Response(serializer.data, status=HTTP_201_CREATED)
         return Response(form.errors, status=HTTP_400_BAD_REQUEST)
+
+    def put(self, request, *args, **kwargs):
+        if request.user.role_pengguna == ROLE_DOSEN and not request.user.is_dosen_ta:
+            return Response(
+                {"msg": "Dosen pembimbing tidak dapat mengubah proposal."},
+                status=HTTP_403_FORBIDDEN,
+            )
+
+        if request.user.role_pengguna == ROLE_MAHASISWA:
+            if not AdministrasiProposal._get_status_pengajuan_proposal():
+                return Response(
+                    {
+                        "msg": "Pengajuan proposal sedang ditutup, tidak dapat mengubah proposal."
+                    },
+                    status=HTTP_403_FORBIDDEN,
+                )
+            if self.proposal.status != PROPOSAL_STATUS_PENDING:
+                return Response(
+                    {
+                        "msg": "Proposal sudah direview oleh Dosen TA, tidak dapat mengubah proposal."
+                    },
+                    status=HTTP_403_FORBIDDEN,
+                )
+
+        proposal_old = {
+            "title": self.proposal.title,
+            "status": self.proposal.status,
+            "sumber_ide": self.proposal.sumber_ide,
+            "berkas_proposal": self.proposal.berkas_proposal,
+            "mahasiswas": self.proposal.mahasiswas.all(),
+            "dosen_pembimbings": self.proposal.dosen_pembimbings.all(),
+        }
+
+        form = ProposalUpdateForm(request.POST, request.FILES, instance=self.proposal)
+        if form.is_valid():
+            errors = []
+
+            # none editable fields should not change
+            if form.cleaned_data["sumber_ide"] != proposal_old["sumber_ide"]:
+                errors.append("Tidak dapat mengubah sumber ide")
+            if set(form.cleaned_data["mahasiswas"]) != set(proposal_old["mahasiswas"]):
+                errors.append("Tidak dapat mengubah mahasiswa")
+            if request.user.role_pengguna == ROLE_MAHASISWA:
+                # only dosen ta can change status and dosen pembimbing
+                if form.cleaned_data["status"] != proposal_old["status"]:
+                    errors.append("Mahasiswa tidak dapat mengubah status")
+                if list(form.cleaned_data["dosen_pembimbings"]) != list(
+                    proposal_old["dosen_pembimbings"]
+                ):
+                    errors.append("Mahasiswa tidak dapat mengubah dosen pembimbing")
+
+            if errors:
+                return Response(
+                    {"msg": "Proposal gagal diubah.", "errors": errors},
+                    status=HTTP_400_BAD_REQUEST,
+                )
+
+            interactions = []
+
+            is_new_berkas_proposal = False
+            if form.cleaned_data["title"] != proposal_old["title"]:
+                interaction_form = InteraksiProposalEditJudulForm(
+                    data={"content": form.cleaned_data["title"]}
+                )
+                interaction = interaction_form.save(
+                    proposal=self.proposal, user=request.user
+                )
+                interactions.append(interaction)
+
+            if form.cleaned_data["status"] != proposal_old["status"]:
+                interaction_form = InteraksiProposalChangeStatusForm(
+                    data={"content": form.cleaned_data["status"]}
+                )
+                interaction = interaction_form.save(
+                    proposal=self.proposal, user=request.user
+                )
+                interactions.append(interaction)
+
+            if form.cleaned_data["berkas_proposal"] != proposal_old["berkas_proposal"]:
+                is_new_berkas_proposal = True
+                interaction_form = InteraksiProposalEditBerkasProposalForm(
+                    data={"content": form.cleaned_data["berkas_proposal"].name}
+                )
+                interaction = interaction_form.save(
+                    proposal=self.proposal, user=request.user
+                )
+                interactions.append(interaction)
+
+            if list(form.cleaned_data["dosen_pembimbings"]) != list(
+                proposal_old["dosen_pembimbings"]
+            ):
+                interaction_form = InteraksiProposalChangeDosenPembimbingForm(
+                    data={
+                        "content": self.__convert_dosen_pembimbing_to_str(
+                            form.cleaned_data["dosen_pembimbings"]
+                        )
+                    }
+                )
+                interaction = interaction_form.save(
+                    proposal=self.proposal, user=request.user
+                )
+                interactions.append(interaction)
+
+            form.save(is_new_berkas_proposal=is_new_berkas_proposal)
+            serializer = InteraksiProposalSerializer(interactions, many=True)
+            return Response(
+                {"msg": "Proposal berhasil diubah.", "interactions": serializer.data},
+                status=HTTP_200_OK,
+            )
+        return Response(
+            {"msg": "Proposal gagal diubah.", "errors": form.errors},
+            status=HTTP_400_BAD_REQUEST,
+        )
 
 
 class ProposalChangeStatusView(APIView):

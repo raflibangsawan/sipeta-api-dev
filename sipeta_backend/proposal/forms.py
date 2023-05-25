@@ -40,12 +40,16 @@ class ProposalCreationForm(forms.ModelForm):
     def save(self, commit=True, *args, **kwargs):
         proposal = super().save(commit=False)
         proposal.semester = Semester._get_active_semester()
-        proposal.status = PROPOSAL_STATUS_PENDING
-        proposal.nama_berkas_proposal = self.cleaned_data["berkas_proposal"].name
-        proposal.created_by = kwargs.get("user")
+        if not kwargs.get("editing"):
+            proposal.status = PROPOSAL_STATUS_PENDING
+        if kwargs.get("is_new_berkas_proposal"):
+            proposal.nama_berkas_proposal = self.cleaned_data["berkas_proposal"].name
+        if kwargs.get("user"):
+            proposal.created_by = kwargs.get("user")
         if commit:
             proposal.save()
-            proposal.mahasiswas.set(self.cleaned_data["mahasiswas"])
+            if not kwargs.get("editing"):
+                proposal.mahasiswas.set(self.cleaned_data["mahasiswas"])
             proposal.dosen_pembimbings.set(self.cleaned_data["dosen_pembimbings"])
         return proposal
 
@@ -103,6 +107,14 @@ class ProposalCreationForm(forms.ModelForm):
         cleaned_data["dosen_pembimbings"] = dosen_pembimbings
 
         return cleaned_data
+
+
+class ProposalUpdateForm(ProposalCreationForm):
+    class Meta(ProposalCreationForm.Meta):
+        fields = ProposalCreationForm.Meta.fields + ["status"]
+
+    def save(self, commit=True, *args, **kwargs):
+        return super().save(commit, editing=True, *args, **kwargs)
 
 
 class ProposalUpdateBerkasProposalForm(forms.ModelForm):
