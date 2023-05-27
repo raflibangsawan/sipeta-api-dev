@@ -50,7 +50,12 @@ class TopikView(APIView):
 
         serializer = TopikSerializer(topiks, many=True)
         return Response(
-            {"num_pages": paginator.paginator.num_pages, "topiks": serializer.data},
+            {
+                "page_range": paginator.paginator.get_elided_page_range(
+                    paginator.number, on_each_side=2, on_ends=1
+                ),
+                "topiks": serializer.data,
+            },
             status=HTTP_200_OK,
         )
 

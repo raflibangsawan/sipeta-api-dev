@@ -466,6 +466,9 @@ class DaftarDosenView(APIView):
                 Q(kode_identitas__iregex=src) | Q(name__iregex=src)
             ).distinct()
 
+        # daftar dosen sort
+        dosens = dosens.order_by("username")
+
         # daftar dosen pagination feature
         paginator = Pagination(
             dosens, request.GET.get("page"), request.GET.get("per_page")
@@ -474,6 +477,11 @@ class DaftarDosenView(APIView):
 
         serializer = DaftarDosenSerializer(dosens, many=True)
         return Response(
-            {"num_pages": paginator.paginator.num_pages, "dosens": serializer.data},
+            {
+                "page_range": paginator.paginator.get_elided_page_range(
+                    paginator.number, on_each_side=2, on_ends=1
+                ),
+                "dosens": serializer.data,
+            },
             status=HTTP_200_OK,
         )
