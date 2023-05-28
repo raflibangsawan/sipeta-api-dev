@@ -6,6 +6,7 @@ from sipeta_backend.proposal.views import (
     ProposalDetailView,
     ProposalDosenInterestView,
     ProposalDownloadListView,
+    ProposalFormPopulateView,
     ProposalView,
 )
 
@@ -16,5 +17,6 @@ urlpatterns = [
     path("<uuid:id>/", view=ProposalDetailView.as_view()),
     path("<uuid:id>/interest", view=ProposalDosenInterestView.as_view()),
     path("<uuid:id>/cancel", view=ProposalCancelView.as_view()),
+    path("<uuid:id>/form", view=ProposalFormPopulateView.as_view()),
     path("download_proposal", view=ProposalDownloadListView.as_view()),
 ]
