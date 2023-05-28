@@ -160,6 +160,9 @@ class ProposalDetailView(APIView):
         is_mahasiswa_anggota = self.proposal.mahasiswas.filter(
             id=request.user.id
         ).exists()
+        is_dosen_pembimbing = self.proposal.dosen_pembimbings.filter(
+            id=request.user.id
+        ).exists()
         is_dosen_tertarik = self.proposal.dosen_tertariks.filter(
             id=request.user.id
         ).exists()
@@ -167,6 +170,7 @@ class ProposalDetailView(APIView):
             {
                 "proposal": serializer.data,
                 "is_mahasiswa_anggota": is_mahasiswa_anggota,
+                "is_dosen_pembimbing": is_dosen_pembimbing,
                 "is_dosen_tertarik": is_dosen_tertarik,
             },
             status=HTTP_200_OK,
