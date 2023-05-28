@@ -2,6 +2,7 @@ from django.conf import settings
 from rest_framework import serializers
 
 from sipeta_backend.proposal.models import InteraksiProposal, Proposal
+from sipeta_backend.users.serializers import UserSerializer
 
 
 class ProposalListSerializer(serializers.ModelSerializer):
@@ -191,3 +192,30 @@ class ProposalDownloadListSerializer(serializers.ModelSerializer):
         if settings.DEBUG:
             return "http://localhost:8000" + path
         return settings.HOST_URL + path
+
+
+class ProposalFormPopulateSerializer(serializers.ModelSerializer):
+    berkas_proposal = serializers.SerializerMethodField()
+    mahasiswas = serializers.SerializerMethodField()
+    dosen_pembimbings = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Proposal
+        fields = [
+            "title",
+            "sumber_ide",
+            "nama_berkas_proposal",
+            "berkas_proposal",
+            "status",
+            "mahasiswas",
+            "dosen_pembimbings",
+        ]
+
+    def get_berkas_proposal(self, obj):
+        return obj.berkas_proposal.url
+
+    def get_mahasiswas(self, obj):
+        return UserSerializer(obj.mahasiswas.all(), many=True).data
+
+    def get_dosen_pembimbings(self, obj):
+        return UserSerializer(obj.dosen_pembimbings.all(), many=True).data

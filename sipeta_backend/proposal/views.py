@@ -31,6 +31,7 @@ from sipeta_backend.proposal.permissions import IsProposalUsers
 from sipeta_backend.proposal.serializers import (
     InteraksiProposalSerializer,
     ProposalDownloadListSerializer,
+    ProposalFormPopulateSerializer,
     ProposalListSerializer,
     ProposalSerializer,
 )
@@ -372,3 +373,15 @@ class ProposalDownloadListView(APIView):
             "Content-Disposition"
         ] = f'attachment; filename="Proposal Pending Semester {semester}.csv"'
         return response
+
+
+class ProposalFormPopulateView(APIView):
+    permission_classes = (
+        permissions.IsAuthenticated,
+        (IsMahasiswa & IsProposalUsers) | IsDosenTa,
+    )
+
+    def get(self, request, *args, **kwargs):
+        proposal = Proposal.objects.get(id_proposal=self.kwargs["id"])
+        serializer = ProposalFormPopulateSerializer(proposal)
+        return Response(serializer.data, status=HTTP_200_OK)
